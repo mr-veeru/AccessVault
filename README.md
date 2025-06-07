@@ -1,10 +1,11 @@
-# User Management & Auth System
+# AccessVault - User Management & Auth System
 
 A microservice-based user management and authentication system built with Flask and PostgreSQL.
 
 ## Features
 
-- User authentication with JWT
+- Separate admin and user services
+- JWT-based authentication
 - Role-based access control (admin, user)
 - PostgreSQL database integration
 - Swagger API documentation
@@ -15,68 +16,122 @@ A microservice-based user management and authentication system built with Flask 
 ```
 project/
 │
-├── auth_service/
+├── admin_service/
+│   ├── __init__.py
 │   ├── app.py
 │   ├── models.py
-│   ├── routes.py
-│   └── ...
+│   └── routes/
+│       ├── admin_auth.py
+│       └── admin_management.py
+│
+├── user_service/
+│   ├── __init__.py
+│   ├── app.py
+│   ├── models.py
+│   └── routes/
+│       ├── user_auth.py
+│       └── user_profile.py
 │
 ├── shared/
+│   ├── __init__.py
+│   ├── config.py
 │   ├── db.py
-│   └── config.py
+│   └── utils/
+│       ├── auth_utils.py
+│       └── validators.py
+│
+├── scripts/
+│   └── init_db.py
 │
 └── requirements.txt
 ```
 
 ## Setup
 
-1. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-2. Install dependencies:
+1. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Configure the database:
-- Update the database URI in `shared/config.py`
-- Update the JWT secret key in `shared/config.py`
-
-4. Run the auth service:
+2. Configure environment variables:
 ```bash
-python auth_service/app.py
+# Database configuration
+export DATABASE_URL="postgresql://postgres:postgres@localhost:5432/accessvault"
+
+# JWT configuration
+export JWT_SECRET_KEY="your-secret-key-here"
+
+# Service ports
+export ADMIN_SERVICE_PORT=5001
+export USER_SERVICE_PORT=5002
+```
+
+3. Initialize the database and create admin user:
+```bash
+python scripts/init_db.py admin admin@example.com "Admin@123"
+```
+
+4. Run the services:
+
+Admin Service:
+```bash
+python admin_service/app.py
+```
+
+User Service:
+```bash
+python user_service/app.py
 ```
 
 ## API Endpoints
 
-### Auth Service (Port 5000)
+### Admin Service (Port 5001)
 
-- `POST /auth/register` - Register a new user
-- `POST /auth/login` - Login and get JWT token
-- `GET /auth/verify` - Verify JWT token
-- `GET /api/docs` - Swagger API documentation
+#### Authentication
+- `POST /admin/auth/login` - Admin login
+- `GET /admin/auth/verify` - Verify admin token
 
-## Example Usage
+#### Management
+- `GET /admin/users` - List all users
+- `GET /admin/users/<user_id>` - Get user details
+- `POST /admin/users/<user_id>/deactivate` - Deactivate user
+- `GET /admin/settings` - Get system settings
+- `PUT /admin/settings` - Update system settings
 
-### Register a new user
+### User Service (Port 5002)
+
+#### Authentication
+- `POST /user/auth/register` - Register new user
+- `POST /user/auth/login` - User login
+- `GET /user/auth/verify` - Verify user token
+
+#### Profile
+- `GET /user/profile` - Get user profile
+- `PUT /user/profile` - Update user profile
+- `PUT /user/password` - Change password
+
+## Security
+
+- Password requirements:
+  - Minimum 8 characters
+  - At least one uppercase letter
+  - At least one lowercase letter
+  - At least one digit
+  - At least one special character
+
+- JWT token expiration: 1 hour
+- Role-based access control
+- Secure password hashing
+
+## Development
+
+To run in development mode:
 ```bash
-curl -X POST http://localhost:5000/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name": "testuser", "password": "password123", "age": 25}'
+export FLASK_DEBUG=True
 ```
 
-### Login
-```bash
-curl -X POST http://localhost:5000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"name": "testuser", "password": "password123"}'
-```
+## API Documentation
 
-### Verify Token
-```bash
-curl -X GET http://localhost:5000/auth/verify \
-  -H "Authorization: Bearer <your_jwt_token>"
-``` 
+Access Swagger documentation at:
+- Admin Service: `http://localhost:5001/api/docs`
+- User Service: `http://localhost:5002/api/docs` 
