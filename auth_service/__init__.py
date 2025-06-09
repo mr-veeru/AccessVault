@@ -1,1 +1,0 @@
-# This file makes the auth_service directory a Python package 
