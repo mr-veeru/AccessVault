@@ -38,22 +38,21 @@ project/
 │   │   ├── __init__.py
 │   │   ├── config.py
 │   │   ├── db.py
+│   │   └── init_db.py
 │   │   └── utils/
 │   │       ├── auth_utils.py
 │   │       └── validators.py
-│   │
-│   ├── scripts/
-│   │   └── init_db.py
 │   │
 │   └── requirements.txt
 │
 ├── frontend/
 │   ├── public/
 │   ├── src/
-│   │   ├── App.js
-│   │   ├── index.js
-│   │   ├── AuthForm.js
-│   │   ├── Dashboard.js
+│   │   ├── App.tsx
+│   │   ├── index.tsx
+│   │   ├── AuthForm.tsx
+│   │   ├── UserProfile.tsx
+│   │   ├── AdminDashboard.tsx
 │   │   ├── index.css
 │   │   └── ... (other React components and assets)
 │   ├── package.json
@@ -175,4 +174,12 @@ To run Flask services in development mode (enabled by default with `FLASK_DEBUG=
 
 Access Swagger documentation at:
 - Admin Service: `http://localhost:5001/api/docs`
-- User Service: `http://localhost:5002/api/docs` 
+- User Service: `http://localhost:5002/api/docs`
+
+## Recent Updates
+
+- Removed debug statements from frontend and backend files.
+- Updated project structure to reflect current state.
+- Improved error handling in the frontend.
+- Enhanced user profile management.
+- Updated README.md to reflect the latest changes and improvements. 

@@ -147,7 +147,6 @@ class ApiService {
   }
 
   private handleError(error: AxiosError<ApiError>): Error {
-    console.log('Error object in handleError:', error); // For debugging
     if (error.response) {
       if (error.response.status === 401) {
         // Explicitly return 'Invalid credentials' for 401 errors

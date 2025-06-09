@@ -44,7 +44,7 @@ const App: React.FC = () => {
         navigate(`/${type}-dashboard`);
       }
     } catch (error) {
-      console.error(`Login failed for ${type}:`, error);
+      // console.error(`Login failed for ${type}:`, error);
     }
   };
 
@@ -56,7 +56,7 @@ const App: React.FC = () => {
         navigate('/user-login');
       }
     } catch (error) {
-      console.error('Registration failed:', error);
+      // console.error('Registration failed:', error);
     }
   };
 
