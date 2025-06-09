@@ -15,7 +15,7 @@ from shared.config import Config
 from admin_service.models import Admin
 from flask import Flask
 
-def create_admin(username, email, password):
+def create_admin(username, email, password, name):
     """Create the first admin user."""
     app = Flask(__name__)
     app.config.from_object(Config)
@@ -32,6 +32,7 @@ def create_admin(username, email, password):
         admin = Admin(
             username=username,
             email=email,
+            name=name,
             role='admin'
         )
         admin.set_password(password)
@@ -42,12 +43,13 @@ def create_admin(username, email, password):
         print(f"Admin user '{username}' created successfully.")
 
 if __name__ == '__main__':
-    if len(sys.argv) != 4:
-        print("Usage: python init_db.py <username> <email> <password>")
+    if len(sys.argv) != 5:
+        print("Usage: python init_db.py <username> <email> <password> <name>")
         sys.exit(1)
     
     username = sys.argv[1]
     email = sys.argv[2]
     password = sys.argv[3]
+    name = sys.argv[4]
     
-    create_admin(username, email, password) 
+    create_admin(username, email, password, name) 

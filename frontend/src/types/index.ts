@@ -2,7 +2,7 @@ export interface User {
   id: number;
   email: string;
   username: string;
-  full_name: string;
+  name: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -28,14 +28,16 @@ export interface LoginCredentials {
   username_or_email?: string;
 }
 
-export interface RegisterData extends LoginCredentials {
+export interface RegisterData {
   username: string;
-  full_name: string;
+  name: string;
+  email: string;
+  password: string;
 }
 
 export interface ProfileUpdateData {
   username?: string;
-  full_name?: string;
+  name?: string;
   email?: string;
   current_password?: string;
   new_password?: string;
@@ -48,5 +50,6 @@ export interface ApiError {
 }
 
 export interface UserProfileResponse {
+  message: string;
   user: User;
 } 

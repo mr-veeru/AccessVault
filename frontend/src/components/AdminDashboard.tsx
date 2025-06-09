@@ -21,7 +21,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     try {
       setIsLoading(true);
       const userData = await apiService.getAllUsers();
-      setUsers(userData);
+      setUsers(userData || []);
       setError(null);
     } catch (err) {
       setError('Failed to fetch users');
@@ -55,7 +55,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const handleViewUserDetails = async (userId: number) => {
     try {
       const userData = await apiService.getUserById(userId);
-      setSelectedUser(userData);
+      setSelectedUser(userData || null);
     } catch (err) {
       setError('Failed to fetch user details');
     }
@@ -172,8 +172,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   <p className="mt-1 text-lg text-gray-900 dark:text-white">{selectedUser.username}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Full Name</h4>
-                  <p className="mt-1 text-lg text-gray-900 dark:text-white">{selectedUser.full_name}</p>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</h4>
+                  <p className="mt-1 text-lg text-gray-900 dark:text-white">{selectedUser.name}</p>
                 </div>
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</h4>

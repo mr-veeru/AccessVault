@@ -12,7 +12,7 @@ def register():
     data = request.get_json()
     
     # Validate required fields
-    required_fields = ['username', 'email', 'password', 'full_name']
+    required_fields = ['username', 'email', 'password', 'name']
     if not all(field in data for field in required_fields):
         return jsonify({'error': 'Missing required fields'}), 400
     
@@ -35,8 +35,7 @@ def register():
     user = User(
         username=data['username'],
         email=data['email'],
-        first_name=data['full_name'].split(' ', 1)[0] if 'full_name' in data else None,
-        last_name=data['full_name'].split(' ', 1)[1] if 'full_name' in data and len(data['full_name'].split(' ', 1)) > 1 else None
+        name=data['name']
     )
     user.set_password(data['password'])
     

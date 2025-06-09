@@ -23,13 +23,13 @@ const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit }) => {
     setLoading(true);
     try {
       if (type === 'register') {
-        const { email, password, username, full_name } = formData;
-        if (!email || !password || !username || !full_name) {
+        const { email, password, username, name } = formData;
+        if (!email || !password || !username || !name) {
           showNotification('All fields are required.', 'error');
           setLoading(false);
           return;
         }
-        await onSubmit({ email, password, username, full_name });
+        await onSubmit({ email, password, username, name });
       } else {
         const { email, password } = formData;
         if (!email || !password) {
@@ -40,6 +40,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit }) => {
         await onSubmit({ username_or_email: email, password });
       }
     } catch (err) {
+      console.error('Error in AuthForm handleSubmit:', err);
       showNotification(err instanceof Error ? err.message : 'Authentication failed', 'error');
     } finally {
       setLoading(false);
@@ -70,11 +71,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
               <input
                 type="text"
-                name="full_name"
-                value={formData.full_name || ''}
+                name="name"
+                value={formData.name || ''}
                 onChange={handleChange}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 required

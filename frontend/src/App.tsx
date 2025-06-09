@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { AuthResponse, LoginCredentials, RegisterData } from './types';
+import { LoginCredentials, RegisterData } from './types';
 import { apiService } from './services/api';
 import AuthForm from './components/AuthForm';
 import UserProfile from './components/UserProfile';
 import AdminDashboard from './components/AdminDashboard';
+import { useNotification } from './context/NotificationContext';
 
 const App: React.FC = () => {
   const [userToken, setUserToken] = useState<string | null>(localStorage.getItem('userToken'));
   const [adminToken, setAdminToken] = useState<string | null>(localStorage.getItem('adminToken'));
   const [darkMode, setDarkMode] = useState<boolean>(localStorage.getItem('darkMode') === 'true');
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
+
+  useEffect(() => {
+    apiService.initialize(showNotification);
+  }, [showNotification]);
 
   useEffect(() => {
     if (darkMode) {
@@ -22,35 +28,35 @@ const App: React.FC = () => {
 
   const handleLogin = async (credentials: LoginCredentials, type: 'admin' | 'user'): Promise<void> => {
     try {
-      const response: AuthResponse = type === 'admin'
+      const response = type === 'admin'
         ? await apiService.adminLogin(credentials)
         : await apiService.userLogin(credentials);
 
-      if (type === 'admin') {
-        setAdminToken(response.access_token);
-        localStorage.setItem('adminToken', response.access_token);
-      } else {
-        setUserToken(response.access_token);
-        localStorage.setItem('userToken', response.access_token);
+      // Only proceed if a response (and thus an access_token) was successfully returned
+      if (response && response.access_token) {
+        if (type === 'admin') {
+          setAdminToken(response.access_token);
+          localStorage.setItem('adminToken', response.access_token);
+        } else {
+          setUserToken(response.access_token);
+          localStorage.setItem('userToken', response.access_token);
+        }
+        navigate(`/${type}-dashboard`);
       }
-      navigate(`/${type}-dashboard`);
     } catch (error) {
       console.error(`Login failed for ${type}:`, error);
-      throw error;
     }
   };
 
   const handleRegister = async (data: LoginCredentials | RegisterData): Promise<void> => {
     try {
-      if ('username' in data && 'full_name' in data) {
-        await apiService.userRegister(data);
+      // Directly call userRegister and handle navigation based on its success.
+      const registrationSuccess = await apiService.userRegister(data as RegisterData); // Cast to RegisterData
+      if (registrationSuccess) {
         navigate('/user-login');
-      } else {
-        await handleLogin(data, 'user');
       }
     } catch (error) {
       console.error('Registration failed:', error);
-      throw error;
     }
   };
 

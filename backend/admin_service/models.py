@@ -9,6 +9,7 @@ class Admin(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(256), nullable=False)
+    name = db.Column(db.String(100))
     role = db.Column(db.String(20), default='admin')
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -25,6 +26,7 @@ class Admin(db.Model):
             'id': self.id,
             'username': self.username,
             'email': self.email,
+            'name': self.name,
             'role': self.role,
             'is_active': self.is_active,
             'created_at': self.created_at.isoformat(),

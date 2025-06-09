@@ -39,18 +39,13 @@ def update_profile():
             return jsonify({'error': 'Email already exists'}), 400
         user.email = data['email']
     
-    if 'full_name' in data:
-        full_name_parts = data['full_name'].split(' ', 1)
-        user.first_name = full_name_parts[0] if len(full_name_parts) > 0 else None
-        user.last_name = full_name_parts[1] if len(full_name_parts) > 1 else None
-    elif 'first_name' in data:
-        user.first_name = data['first_name']
+    if 'name' in data:
+        user.name = data['name']
     
-    if 'last_name' in data:
-        user.last_name = data['last_name']
-    
-    if 'profile_data' in data:
-        user.profile_data = data['profile_data']
+    if 'username' in data:
+        # Add validation for username if necessary (e.g., uniqueness, format)
+        # For now, just assign it directly
+        user.username = data['username']
     
     db.session.commit()
     

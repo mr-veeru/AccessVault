@@ -10,8 +10,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<ProfileUpdateData>({});
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUserProfile();
@@ -20,14 +18,20 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
   const fetchUserProfile = async () => {
     try {
       const userData = await apiService.getUserProfile();
-      setUser(userData);
-      setFormData({
-        username: userData.username,
-        full_name: userData.full_name,
-        email: userData.email,
-      });
+      console.log('User data fetched:', userData); // For debugging
+      if (userData) {
+        setUser(userData);
+        console.log('User state after fetchUserProfile:', userData); // New log
+        setFormData({
+          username: userData.username,
+          name: userData.name,
+          email: userData.email,
+        });
+      } else {
+        setUser(null);
+      }
     } catch (err) {
-      setError('Failed to fetch user profile');
+      console.error('Error fetching user profile:', err); // For debugging
     }
   };
 
@@ -41,16 +45,15 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
 
     try {
-      const updatedUser = await apiService.updateUserProfile(formData);
-      setUser(updatedUser);
-      setIsEditing(false);
-      setSuccess('Profile updated successfully');
+      const updatedUserResponse = await apiService.updateUserProfile(formData);
+      if (updatedUserResponse && updatedUserResponse.user) {
+        setUser(updatedUserResponse.user);
+        setIsEditing(false);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update profile');
+      // Removed local error setting, apiService already handles notifications
     }
   };
 
@@ -70,18 +73,6 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
         </button>
       </div>
 
-      {error && (
-        <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-          {success}
-        </div>
-      )}
-
       {isEditing ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -96,11 +87,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
             <input
               type="text"
-              name="full_name"
-              value={formData.full_name || ''}
+              name="name"
+              value={formData.name || ''}
               onChange={handleInputChange}
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
             />
@@ -141,8 +132,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Full Name</h3>
-            <p className="mt-1 text-lg text-gray-900 dark:text-white">{user.full_name}</p>
+            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</h3>
+            <p className="mt-1 text-lg text-gray-900 dark:text-white">{user.name}</p>
           </div>
 
           <div>
@@ -166,7 +157,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
           <div>
             <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Member Since</h3>
             <p className="mt-1 text-lg text-gray-900 dark:text-white">
-              {new Date(user.created_at).toLocaleDateString()}
+              {user.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
             </p>
           </div>
 
