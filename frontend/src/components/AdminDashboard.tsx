@@ -24,6 +24,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUserData, setNewUserData] = useState<Partial<RegisterData>>({});
   const [showPassword, setShowPassword] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [editUserData, setEditUserData] = useState<Partial<User>>({});
 
   useEffect(() => {
     fetchUsers();
@@ -42,33 +44,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleDeactivateUser = async (userId: number, username: string) => {
-    try {
-      await apiService.deactivateUser(userId, username);
-      // Refresh the users list
-      fetchUsers();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to deactivate user');
-    }
-  };
-
-  const handleActivateUser = async (userId: number, username: string) => {
-    try {
-      await apiService.activateUser(userId, username);
-      // Refresh the users list
-      fetchUsers();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to activate user');
-    }
-  };
-
   const handleDeleteUser = async (userId: number, username: string) => {
     if (window.confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
       try {
         await apiService.deleteUser(userId);
-        // Refresh the users list
         fetchUsers();
-        // Clear selected user if it was the deleted user
         if (selectedUser?.id === userId) {
           setSelectedUser(null);
         }
@@ -91,17 +71,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     event.preventDefault();
     try {
       if (!newUserData.username || !newUserData.email || !newUserData.password || !newUserData.name) {
-        // The apiService.createUser will handle the notification for missing fields
         return;
       }
       await apiService.createUser(newUserData as RegisterData);
-      // Refresh the users list
       fetchUsers();
-      // Close the modal and reset form
       setShowAddUserModal(false);
-      setNewUserData({}); // Reset form data
+      setNewUserData({});
     } catch (err) {
-      // Error handling is now done by apiService, so no explicit setError here
+      // Error handling is now done by apiService
     }
   };
 
@@ -115,6 +92,41 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const togglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
+  };
+
+  const handleEditUserClick = (user: User) => {
+    setEditUserData(user);
+    setShowEditUserModal(true);
+  };
+
+  const handleEditUserChange = (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = event.target;
+
+    if (name === 'is_active') {
+      setEditUserData((prevData: Partial<User>) => ({
+        ...prevData,
+        [name]: value === 'true',
+      }));
+    } else {
+      setEditUserData((prevData: Partial<User>) => ({
+        ...prevData,
+        [name]: value,
+      }));
+    }
+  };
+
+  const handleUpdateUserSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!editUserData.id) return;
+
+    try {
+      await apiService.updateUser(editUserData.id, editUserData);
+      fetchUsers();
+      setShowEditUserModal(false);
+      setSelectedUser(null);
+    } catch (err) {
+      // apiService handles notifications
+    }
   };
 
   if (isLoading) {
@@ -154,7 +166,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Users List */}
         <div className="lg:col-span-2">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
             <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Users</h3>
@@ -197,25 +208,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => handleViewUserDetails(user.id)}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-4"
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
                         >
                           View
                         </button>
-                        {user.is_active ? (
-                          <button
-                            onClick={() => handleDeactivateUser(user.id, user.username)}
-                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 mr-4"
-                          >
-                            Deactivate
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleActivateUser(user.id, user.username)}
-                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 mr-4"
-                          >
-                            Activate
-                          </button>
-                        )}
+                        <button
+                          onClick={() => handleEditUserClick(user)}
+                          className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 mr-3"
+                        >
+                          Edit
+                        </button>
                         <button
                           onClick={() => handleDeleteUser(user.id, user.username)}
                           className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
@@ -231,153 +233,200 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </div>
         </div>
 
-        {/* User Details */}
-        <div className="lg:col-span-1">
-          {selectedUser ? (
+        {selectedUser && (
+          <div className="lg:col-span-1">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
               <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">User Details</h3>
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Username</h4>
-                  <p className="mt-1 text-lg text-gray-900 dark:text-white">{selectedUser.username}</p>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedUser.username}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</h4>
-                  <p className="mt-1 text-lg text-gray-900 dark:text-white">{selectedUser.name}</p>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedUser.email}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</h4>
-                  <p className="mt-1 text-lg text-gray-900 dark:text-white">{selectedUser.email}</p>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">{selectedUser.name}</p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</h4>
-                  <p className="mt-1">
-                    <span className={`px-2 py-1 rounded-full text-sm ${
-                      selectedUser.is_active
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-                    }`}>
-                      {selectedUser.is_active ? 'Active' : 'Inactive'}
-                    </span>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Status</label>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                    {selectedUser.is_active ? 'Active' : 'Inactive'}
                   </p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Member Since</h4>
-                  <p className="mt-1 text-lg text-gray-900 dark:text-white">
-                    {selectedUser.created_at ? formatDate(selectedUser.created_at) : 'N/A'}
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Created At</label>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
+                    {formatDate(selectedUser.created_at)}
                   </p>
                 </div>
                 <div>
-                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Login</h4>
-                  <p className="mt-1 text-lg text-gray-900 dark:text-white">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Last Login</label>
+                  <p className="mt-1 text-sm text-gray-900 dark:text-white">
                     {selectedUser.last_login ? formatDate(selectedUser.last_login) : 'N/A'}
                   </p>
                 </div>
               </div>
               <div className="mt-6 flex justify-end">
                 <button
+                  type="button"
                   onClick={() => setSelectedUser(null)}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-colors"
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
                   Close
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-              <p className="text-gray-500 dark:text-gray-400 text-center">
-                Select a user to view their details
-              </p>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Add New User Modal */}
-      {showAddUserModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex justify-center items-center z-50">
-          <div className="relative p-8 bg-white dark:bg-gray-800 w-full max-w-md mx-auto rounded-lg shadow-lg">
-            <h3 className="text-xl font-semibold mb-6 text-gray-900 dark:text-white">Add New User</h3>
-            <form onSubmit={handleAddUserSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
-                <input
-                  type="text"
-                  id="username"
-                  name="username"
-                  value={newUserData.username || ''}
-                  onChange={handleAddUserChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={newUserData.email || ''}
-                  onChange={handleAddUserChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
-                <div className="mt-1 relative rounded-md shadow-sm">
+      {/* Edit User Modal */}
+      {showEditUserModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Edit User</h3>
+            <form onSubmit={handleUpdateUserSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
                   <input
-                    type={showPassword ? 'text' : 'password'}
-                    id="password"
-                    name="password"
-                    value={newUserData.password || ''}
-                    onChange={handleAddUserChange}
-                    className="block w-full pr-10 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
-                    required
+                    type="text"
+                    name="username"
+                    value={editUserData.username || ''}
+                    onChange={handleEditUserChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   />
-                  <button
-                    type="button"
-                    onClick={togglePasswordVisibility}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-gray-500 dark:text-gray-400 focus:outline-none"
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={editUserData.email || ''}
+                    onChange={handleEditUserChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={editUserData.name || ''}
+                    onChange={handleEditUserChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Account Status</label>
+                  <select
+                    name="is_active"
+                    value={editUserData.is_active ? 'true' : 'false'}
+                    onChange={handleEditUserChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                   >
-                    {showPassword ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.988 5.844A8.25 8.25 0 0112 2.25c2.307 0 4.467.558 6.362 1.574M16.72 6.22a8.25 8.25 0 013.375 7.037m-1.588-4.947a1.125 1.125 0 111.588 1.588l-.348.348A2.25 2.25 0 0112 11.25c-1.234 0-2.25-.506-2.25-1.125v-.348M9.6 9.6a1.125 1.125 0 10-1.588 1.588l.348-.348m.348-.348C9.373 8.71 10.395 8.25 11.25 8.25c.619 0 1.125.251 1.125.563v.348m-.348-.348l-.348-.348A8.25 8.25 0 002.25 12c0 2.946.946 5.617 2.56 7.822m14.24-2.144A8.25 8.25 0 0021.75 12c0-2.946-.946-5.617-2.56-7.822m-1.588 4.947a1.125 1.125 0 11-1.588-1.588l.348-.348A2.25 2.25 0 0112 11.25c1.234 0 2.25.506 2.25 1.125v.348m.348.348l.348.348A8.25 8.25 0 0021.75 12c0 2.946-.946 5.617-2.56 7.822" />
-                      </svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    )}
-                  </button>
+                    <option value="true">Activate</option>
+                    <option value="false">Deactivate</option>
+                  </select>
                 </div>
               </div>
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={newUserData.name || ''}
-                  onChange={handleAddUserChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
-                  required
-                />
-              </div>
-              <div className="flex justify-end space-x-3 mt-6">
+              <div className="mt-6 flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setShowAddUserModal(false)}
-                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-colors"
+                  onClick={() => setShowEditUserModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
-                  Create User
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add User Modal */}
+      {showAddUserModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Add New User</h3>
+            <form onSubmit={handleAddUserSubmit}>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+                  <input
+                    type="text"
+                    name="username"
+                    value={newUserData.username || ''}
+                    onChange={handleAddUserChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={newUserData.email || ''}
+                    onChange={handleAddUserChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+                  <input
+                    type="text"
+                    name="name"
+                    value={newUserData.name || ''}
+                    onChange={handleAddUserChange}
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      value={newUserData.password || ''}
+                      onChange={handleAddUserChange}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={togglePasswordVisibility}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
+                    >
+                      {showPassword ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddUserModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Add User
                 </button>
               </div>
             </form>

@@ -232,7 +232,18 @@ class ApiService {
       this.showNotification('User deleted successfully!', 'success');
     } catch (error) {
       this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
-      throw error; // Re-throw the error so calling component can catch it if needed
+      throw error;
+    }
+  }
+
+  async updateUser(userId: number, userData: Partial<RegisterData> & { is_active?: boolean }): Promise<User | undefined> {
+    try {
+      const response = await this.adminApi.put<{'message': string, 'user': User}>(`/admin/users/${userId}`, userData);
+      this.showNotification('User updated successfully!', 'success');
+      return response.data.user;
+    } catch (error) {
+      this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      throw error;
     }
   }
 

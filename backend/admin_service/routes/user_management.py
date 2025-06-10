@@ -76,6 +76,69 @@ def create_user():
         'user': user.to_dict()
     }), 201
 
+@user_management.route('/users/<int:user_id>', methods=['PUT'])
+@jwt_required()
+@admin_required
+def update_user(user_id):
+    user = User.query.get_or_404(user_id)
+    data = request.get_json()
+
+    current_admin_id = get_jwt_identity()
+
+    # Prevent admin from editing their own account, especially role/status if not intended
+    if user.id == current_admin_id:
+        user_management_logger.warning(f"Admin {current_admin_id} attempted to edit their own account via user management.")
+        return jsonify({'error': 'Cannot edit your own account via this interface.'}), 400
+
+    if 'username' in data:
+        new_username = data['username'].lower()
+        if not validate_username(new_username):
+            user_management_logger.warning(f"Admin {current_admin_id} failed to update user {user_id}: Invalid username format for {new_username}.")
+            return jsonify({'error': 'Username can only contain lowercase letters, numbers, and underscores'}), 400
+        if User.query.filter(User.id != user_id, User.username == new_username).first():
+            user_management_logger.warning(f"Admin {current_admin_id} failed to update user {user_id}: Username '{new_username}' already exists.")
+            return jsonify({'error': 'Username already exists'}), 400
+        user.username = new_username
+        user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} username to {new_username}.")
+
+    if 'email' in data:
+        new_email = data['email'].lower()
+        if not validate_email(new_email):
+            user_management_logger.warning(f"Admin {current_admin_id} failed to update user {user_id}: Invalid email format for {new_email}.")
+            return jsonify({'error': 'Invalid email format'}), 400
+        if User.query.filter(User.id != user_id, User.email == new_email).first():
+            user_management_logger.warning(f"Admin {current_admin_id} failed to update user {user_id}: Email '{new_email}' already exists.")
+            return jsonify({'error': 'Email already exists'}), 400
+        user.email = new_email
+        user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} email to {new_email}.")
+
+    if 'name' in data:
+        user.name = data['name']
+        user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} name to {data['name']}.")
+
+    if 'is_active' in data and isinstance(data['is_active'], bool):
+        user.is_active = data['is_active']
+        user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} active status to {data['is_active']}.")
+
+    # Password changes should ideally be handled through a separate, explicit endpoint
+    # For this task, we'll allow it if provided, but typically a separate endpoint is more secure
+    if 'password' in data and data['password']:
+        password_validation_result = validate_password(data['password'])
+        if password_validation_result is not True:
+            user_management_logger.warning(f"Admin {current_admin_id} failed to update user {user_id}: {password_validation_result}")
+            return jsonify({'error': password_validation_result}), 400
+        user.set_password(data['password'])
+        user_management_logger.info(f"Admin {current_admin_id} updated password for user {user_id}.")
+
+    try:
+        db.session.commit()
+        user_management_logger.info(f"User {user_id} details updated successfully by admin {current_admin_id}.")
+        return jsonify({'message': 'User updated successfully', 'user': user.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        user_management_logger.error(f"Admin {current_admin_id} failed to update user {user_id}: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
 @user_management.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
 @admin_required
