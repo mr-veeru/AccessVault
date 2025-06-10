@@ -5,6 +5,7 @@ import { apiService } from './services/api';
 import AuthForm from './components/AuthForm';
 import UserProfile from './components/UserProfile';
 import AdminDashboard from './components/AdminDashboard';
+import AdminProfile from './components/AdminProfile';
 import { useNotification } from './context/NotificationContext';
 
 const App: React.FC = () => {
@@ -32,7 +33,6 @@ const App: React.FC = () => {
         ? await apiService.adminLogin(credentials)
         : await apiService.userLogin(credentials);
 
-      // Only proceed if a response (and thus an access_token) was successfully returned
       if (response && response.access_token) {
         if (type === 'admin') {
           setAdminToken(response.access_token);
@@ -44,19 +44,18 @@ const App: React.FC = () => {
         navigate(`/${type}-dashboard`);
       }
     } catch (error) {
-      // console.error(`Login failed for ${type}:`, error);
+      // Error handling is done by apiService
     }
   };
 
   const handleRegister = async (data: LoginCredentials | RegisterData): Promise<void> => {
     try {
-      // Directly call userRegister and handle navigation based on its success.
-      const registrationSuccess = await apiService.userRegister(data as RegisterData); // Cast to RegisterData
+      const registrationSuccess = await apiService.userRegister(data as RegisterData);
       if (registrationSuccess) {
         navigate('/user-login');
       }
     } catch (error) {
-      // console.error('Registration failed:', error);
+      // Error handling is done by apiService
     }
   };
 
@@ -143,6 +142,12 @@ const App: React.FC = () => {
           <Route
             path="/admin-dashboard"
             element={<AdminDashboard onLogout={handleLogout} />}
+          />
+        )}
+        {adminToken && (
+          <Route
+            path="/admin-profile"
+            element={<AdminProfile onLogout={handleLogout} />}
           />
         )}
 

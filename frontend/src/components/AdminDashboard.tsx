@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
 import { apiService } from '../services/api';
+import { Link } from 'react-router-dom';
 
 interface AdminDashboardProps {
   onLogout: () => void;
 }
 
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).replace(/ /g, '-');
+};
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -30,10 +39,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleDeactivateUser = async (userId: number) => {
+  const handleDeactivateUser = async (userId: number, username: string) => {
     try {
-      await apiService.deactivateUser(userId);
-      setSuccess('User deactivated successfully');
+      await apiService.deactivateUser(userId, username);
       // Refresh the users list
       fetchUsers();
     } catch (err) {
@@ -41,10 +49,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     }
   };
 
-  const handleActivateUser = async (userId: number) => {
+  const handleActivateUser = async (userId: number, username: string) => {
     try {
-      await apiService.activateUser(userId);
-      setSuccess('User activated successfully');
+      await apiService.activateUser(userId, username);
       // Refresh the users list
       fetchUsers();
     } catch (err) {
@@ -69,23 +76,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     <div className="max-w-7xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h2>
-        <button
-          onClick={onLogout}
-          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-        >
-          Logout
-        </button>
+        <div className="flex space-x-4">
+          <Link
+            to="/admin-profile"
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+          >
+            Edit Profile
+          </Link>
+          <button
+            onClick={onLogout}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+          >
+            Logout
+          </button>
+        </div>
       </div>
 
       {error && (
         <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
-        </div>
-      )}
-
-      {success && (
-        <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
-          {success}
         </div>
       )}
 
@@ -139,14 +148,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                         </button>
                         {user.is_active ? (
                           <button
-                            onClick={() => handleDeactivateUser(user.id)}
+                            onClick={() => handleDeactivateUser(user.id, user.username)}
                             className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
                           >
                             Deactivate
                           </button>
                         ) : (
                           <button
-                            onClick={() => handleActivateUser(user.id)}
+                            onClick={() => handleActivateUser(user.id, user.username)}
                             className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
                           >
                             Activate
@@ -194,9 +203,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Member Since</h4>
                   <p className="mt-1 text-lg text-gray-900 dark:text-white">
-                    {new Date(selectedUser.created_at).toLocaleDateString()}
+                    {selectedUser.created_at ? formatDate(selectedUser.created_at) : 'N/A'}
                   </p>
                 </div>
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Last Login</h4>
+                  <p className="mt-1 text-lg text-gray-900 dark:text-white">
+                    {selectedUser.last_login ? formatDate(selectedUser.last_login) : 'N/A'}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setSelectedUser(null)}
+                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-colors"
+                >
+                  Close
+                </button>
               </div>
             </div>
           ) : (

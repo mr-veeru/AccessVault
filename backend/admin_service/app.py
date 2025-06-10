@@ -13,9 +13,13 @@ from shared.config import Config
 from shared.db import db
 from dotenv import load_dotenv
 from flask_cors import CORS
+from shared.logger import setup_logging
 
 # Load environment variables
 load_dotenv(os.path.join(project_root, '.env'))
+
+# Set up logging for the admin service
+admin_service_logger = setup_logging('admin_service')
 
 def create_app():
     app = Flask(__name__)
@@ -47,4 +51,5 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
+    admin_service_logger.info(f"Admin Service running on port {os.getenv('ADMIN_SERVICE_PORT', 5001)}")
     app.run(port=int(os.getenv('ADMIN_SERVICE_PORT', 5001)), debug=True) 

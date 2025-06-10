@@ -93,7 +93,7 @@ pip install -r backend/requirements.txt
 3. Initialize the database and create admin user:
    (Ensure your PostgreSQL database, e.g., Supabase, is running and accessible)
    ```bash
-   python backend/scripts/init_db.py admin admin@example.com "Admin@123"
+   python backend/shared/init_db.py admin68 admin@example.com "Admin@123" Admin
    ```
 
 4. Run the backend services in separate terminals:

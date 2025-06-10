@@ -15,7 +15,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit }) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    // Convert username and email to lowercase
+    const processedValue = (name === 'username' || name === 'email') ? value.toLowerCase() : value;
+    setFormData(prev => ({ ...prev, [name]: processedValue }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,7 +35,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit }) => {
       } else {
         const { email, password } = formData;
         if (!email || !password) {
-          showNotification('Email and password are required.', 'error');
+          showNotification('Email/Username and password are required.', 'error');
           setLoading(false);
           return;
         }
@@ -84,9 +86,11 @@ const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit }) => {
           </>
         )}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            {type === 'login' ? 'Email or Username' : 'Email'}
+          </label>
           <input
-            type="email"
+            type={type === 'login' ? 'text' : 'email'}
             name="email"
             value={formData.email || ''}
             onChange={handleChange}

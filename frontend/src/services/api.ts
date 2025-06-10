@@ -1,5 +1,5 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { AuthResponse, LoginCredentials, RegisterData, User, ProfileUpdateData, ApiError, UserProfileResponse } from '../types';
+import { AuthResponse, LoginCredentials, RegisterData, User, ProfileUpdateData, ApiError, UserProfileResponse, AdminProfileResponse } from '../types';
 
 // We will import useNotification where apiService is initialized (e.g., in App.tsx)
 // and pass the showNotification function to apiService.initialize(showNotificationFunc)
@@ -107,6 +107,19 @@ class ApiService {
     }
   }
 
+  async changeUserPassword(
+    passwordData: { old_password: string; new_password: string }
+  ): Promise<boolean> {
+    try {
+      await this.userApi.put("/user/auth/change-password", passwordData);
+      this.showNotification("Password updated successfully!", "success");
+      return true;
+    } catch (error: any) {
+      this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      return false;
+    }
+  }
+
   // Admin Management
   async getAllUsers(): Promise<User[] | undefined> {
     try {
@@ -128,42 +141,75 @@ class ApiService {
     }
   }
 
-  async deactivateUser(userId: number): Promise<void> {
+  async deactivateUser(userId: number, username: string): Promise<void> {
     try {
       await this.adminApi.post(`/admin/users/${userId}/deactivate`);
-      this.showNotification(`User ${userId} deactivated successfully!`, 'success');
+      this.showNotification(`${username} deactivated successfully!`, 'success');
     } catch (error) {
       this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
     }
   }
 
-  async activateUser(userId: number): Promise<void> {
+  async activateUser(userId: number, username: string): Promise<void> {
     try {
       await this.adminApi.post(`/admin/users/${userId}/activate`);
-      this.showNotification(`User ${userId} activated successfully!`, 'success');
+      this.showNotification(`${username} activated successfully!`, 'success');
     } catch (error) {
       this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+    }
+  }
+
+  async updateAdminProfile(
+    adminData: { username?: string; email?: string; name?: string }
+  ): Promise<AdminProfileResponse | undefined> {
+    try {
+      const response = await this.adminApi.put<AdminProfileResponse>(
+        "/admin/profile",
+        adminData
+      );
+      this.showNotification("Profile updated successfully!", "success");
+      return response.data;
+    } catch (error: any) {
+      this.handleError(error);
+      return undefined;
+    }
+  }
+
+  async verifyAdminToken(): Promise<AdminProfileResponse | undefined> {
+    try {
+      const response = await this.adminApi.get<AdminProfileResponse>('/admin/auth/verify');
+      return response.data;
+    } catch (error: any) {
+      this.handleError(error);
+      return undefined;
+    }
+  }
+
+  async changeAdminPassword(
+    passwordData: { old_password: string; new_password: string }
+  ): Promise<boolean> {
+    try {
+      await this.adminApi.put("/admin/auth/change-password", passwordData);
+      this.showNotification("Password updated successfully!", "success");
+      return true;
+    } catch (error: any) {
+      this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      return false;
     }
   }
 
   private handleError(error: AxiosError<ApiError>): Error {
     if (error.response) {
       if (error.response.status === 401) {
-        // Explicitly return 'Invalid credentials' for 401 errors
-        return new Error('Invalid credentials');
+        return new Error(error.response.data?.error || 'Invalid credentials');
       } else if (error.response.status === 400) {
-        // Handle 400 Bad Request specifically, often for validation errors
-        // Prioritize error.response.data.error if available, otherwise backend message, then fallback
         return new Error(error.response.data?.error || error.response.data?.message || 'Registration failed: Please check your input.');
       } else if (error.response.data && error.response.data.message) {
-        // For other errors, use the backend message if available
         return new Error(error.response.data.message);
       } else {
-        // Fallback for other HTTP errors without a specific message
         return new Error(`Request failed with status code ${error.response.status}`);
       }
     }
-    // For network errors or requests that didn't receive a response
     return new Error('Network error occurred or no response received');
   }
 }

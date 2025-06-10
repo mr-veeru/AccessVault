@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { User, ProfileUpdateData } from '../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Admin } from '../types';
 import { apiService } from '../services/api';
 import { useNotification } from '../context/NotificationContext';
+import { useNavigate } from 'react-router-dom';
 
-interface UserProfileProps {
+interface AdminProfileProps {
   onLogout: () => void;
 }
 
@@ -16,49 +17,54 @@ const formatDate = (dateString: string) => {
   }).replace(/ /g, '-');
 };
 
-const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
-  const [user, setUser] = useState<User | null>(null);
+const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
+  const [admin, setAdmin] = useState<Admin | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<ProfileUpdateData>({});
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    name: '',
+  });
   const [passwordData, setPasswordData] = useState({
     old_password: '',
     new_password: '',
     confirm_new_password: '',
   });
+  const [isLoading, setIsLoading] = useState(true);
   const { showNotification } = useNotification();
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const navigate = useNavigate();
+
+  const fetchAdminProfile = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await apiService.verifyAdminToken();
+      if (response && response.admin) {
+        setAdmin(response.admin);
+        setFormData({
+          username: response.admin.username || '',
+          email: response.admin.email || '',
+          name: response.admin.name || '',
+        });
+      }
+    } catch (error) {
+      showNotification('Failed to fetch admin profile.', 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [showNotification]);
 
   useEffect(() => {
-    fetchUserProfile();
-  }, []);
-
-  const fetchUserProfile = async () => {
-    try {
-      const userData = await apiService.getUserProfile();
-      console.log('User data fetched:', userData); // For debugging
-      if (userData) {
-        setUser(userData);
-        console.log('User state after fetchUserProfile:', userData); // New log
-        setFormData({
-          username: userData.username,
-          name: userData.name,
-          email: userData.email,
-        });
-      } else {
-        setUser(null);
-      }
-    } catch (err) {
-      console.error('Error fetching user profile:', err); // For debugging
-    }
-  };
+    fetchAdminProfile();
+  }, [fetchAdminProfile]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
+    setFormData((prevData) => ({
+      ...prevData,
+      [name]: value,
     }));
   };
 
@@ -86,7 +92,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
     }
 
     try {
-      const success = await apiService.changeUserPassword({
+      const success = await apiService.changeAdminPassword({
         old_password: passwordData.old_password,
         new_password: passwordData.new_password,
       });
@@ -98,133 +104,115 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
-      const updatedUserResponse = await apiService.updateUserProfile(formData);
-      if (updatedUserResponse && updatedUserResponse.user) {
-        setUser(updatedUserResponse.user);
+      const updatedAdminResponse = await apiService.updateAdminProfile(formData);
+      if (updatedAdminResponse && updatedAdminResponse.admin) {
+        setAdmin(updatedAdminResponse.admin);
         setIsEditing(false);
       }
-    } catch (err) {
-      // Removed local error setting, apiService already handles notifications
+    } catch (error) {
+      showNotification('Failed to update admin profile.', 'error');
     }
   };
 
-  if (!user) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+  if (isLoading) {
+    return <div className="flex justify-center items-center h-screen">Loading admin profile...</div>;
+  }
+
+  if (!admin) {
+    return <div className="text-center mt-8 text-red-500">Admin profile not found.</div>;
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">User Profile</h2>
-        <button
-          onClick={onLogout}
-          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-        >
-          Logout
-        </button>
-      </div>
+    <div className="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-800 shadow-md rounded-lg mt-8">
+      <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white text-center">Admin Profile</h2>
 
-      {isEditing ? (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
-            <input
-              type="text"
-              name="username"
-              value={formData.username || ''}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name || ''}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email || ''}
-              onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-            />
-          </div>
-
-          <div className="flex justify-end space-x-4">
-            <button
-              type="button"
-              onClick={() => setIsEditing(false)}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Save Changes
-            </button>
-          </div>
-        </form>
-      ) : (
+      {!isEditing ? (
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Username</h3>
-            <p className="mt-1 text-lg text-gray-900 dark:text-white">{user.username}</p>
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Username:</h3>
+            <p className="text-gray-900 dark:text-white">{admin.username}</p>
           </div>
-
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</h3>
-            <p className="mt-1 text-lg text-gray-900 dark:text-white">{user.name}</p>
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Name:</h3>
+            <p className="text-gray-900 dark:text-white">{admin.name || 'N/A'}</p>
           </div>
-
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</h3>
-            <p className="mt-1 text-lg text-gray-900 dark:text-white">{user.email}</p>
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Email:</h3>
+            <p className="text-gray-900 dark:text-white">{admin.email}</p>
           </div>
-
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Account Status</h3>
-            <p className="mt-1 text-lg">
-              <span className={`px-2 py-1 rounded-full text-sm ${
-                user.is_active
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-              }`}>
-                {user.is_active ? 'Active' : 'Inactive'}
-              </span>
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Role:</h3>
+            <p className="text-gray-900 dark:text-white">{admin.role}</p>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Member Since:</h3>
+            <p className="text-gray-900 dark:text-white">
+              {admin.created_at ? formatDate(admin.created_at) : 'N/A'}
             </p>
           </div>
-
-          <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Member Since</h3>
-            <p className="mt-1 text-lg text-gray-900 dark:text-white">
-              {user.created_at ? formatDate(user.created_at) : 'N/A'}
-            </p>
-          </div>
-
-          <div className="flex justify-end">
+          <div className="flex justify-center mt-6">
             <button
               onClick={() => setIsEditing(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors"
             >
               Edit Profile
             </button>
           </div>
         </div>
+      ) : (
+        <form onSubmit={handleUpdateProfile} className="space-y-4">
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+            />
+          </div>
+          <div className="flex justify-end space-x-3 mt-6">
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+            >
+              Save Changes
+            </button>
+          </div>
+        </form>
       )}
 
       <div className="mt-8 p-6 bg-white dark:bg-gray-800 shadow-md rounded-lg">
@@ -327,8 +315,17 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
           </div>
         </form>
       </div>
+
+      <div className="flex justify-center mt-6">
+        <button
+          onClick={() => navigate('/admin-dashboard')}
+          className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-colors"
+        >
+          Back to Dashboard
+        </button>
+      </div>
     </div>
   );
 };
 
-export default UserProfile; 
+export default AdminProfile; 

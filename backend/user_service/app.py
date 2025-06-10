@@ -13,9 +13,13 @@ from shared.config import Config
 from shared.db import db
 from dotenv import load_dotenv
 from flask_cors import CORS
+from shared.logger import setup_logging
 
 # Load environment variables
 load_dotenv(os.path.join(project_root, '.env'))
+
+# Set up logging for the user service
+user_service_logger = setup_logging('user_service')
 
 def create_app():
     app = Flask(__name__)
@@ -47,4 +51,5 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
+    user_service_logger.info(f"User Service running on port {os.getenv('USER_SERVICE_PORT', 5002)}")
     app.run(port=int(os.getenv('USER_SERVICE_PORT', 5002)), debug=True) 

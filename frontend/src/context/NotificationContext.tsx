@@ -57,7 +57,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   return (
     <NotificationContext.Provider value={{ showNotification }}>
       {children}
-      <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs">
+      <div className="fixed top-4 right-4 z-50 space-y-2 max-w-xs min-w-64">
         {notifications.map((notification) => (
           <div
             key={notification.id}

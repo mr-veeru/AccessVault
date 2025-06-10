@@ -2,9 +2,21 @@ import re
 from shared.config import Config
 
 def validate_email(email):
-    """Validate email format."""
-    pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    """Validate email format and convert to lowercase."""
+    if not email:
+        return False
+    email = email.lower()
+    pattern = r'^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$'
     return bool(re.match(pattern, email))
+
+def validate_username(username):
+    """Validate username format and convert to lowercase."""
+    if not username:
+        return False
+    username = username.lower()
+    # Username should only contain lowercase letters, numbers, and underscores
+    pattern = r'^[a-z0-9_]+$'
+    return bool(re.match(pattern, username))
 
 def validate_password(password):
     """Validate password strength."""
@@ -23,10 +35,4 @@ def validate_password(password):
     if Config.PASSWORD_REQUIRE_SPECIAL and not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         return 'Password must contain at least one special character.'
     
-    return True
-
-def validate_username(username):
-    """Validate username format."""
-    # Username should be 3-20 characters long and contain only letters, numbers, and underscores
-    pattern = r'^[a-zA-Z0-9_]{3,20}$'
-    return bool(re.match(pattern, username)) 
+    return True 
