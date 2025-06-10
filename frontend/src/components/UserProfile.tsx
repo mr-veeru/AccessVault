@@ -112,6 +112,19 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
     }
   };
 
+  const handleDeactivateAccount = async () => {
+    if (window.confirm('Are you sure you want to deactivate your account? This action cannot be undone.')) {
+      try {
+        const success = await apiService.deactivateOwnAccount();
+        if (success) {
+          onLogout();
+        }
+      } catch (error) {
+        showNotification('Failed to deactivate account. Please try again.', 'error');
+      }
+    }
+  };
+
   if (!user) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
@@ -326,6 +339,18 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
             </button>
           </div>
         </form>
+      </div>
+
+      <div className="mt-8 p-6 bg-white dark:bg-gray-800 shadow-md rounded-lg">
+        <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white text-center">Account Actions</h3>
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={handleDeactivateAccount}
+            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          >
+            Deactivate My Account
+          </button>
+        </div>
       </div>
     </div>
   );

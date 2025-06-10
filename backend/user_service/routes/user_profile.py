@@ -96,4 +96,23 @@ def change_password():
     user_profile_logger.info(f"Password for user {current_user_id} changed successfully.")
     return jsonify({
         'message': 'Password changed successfully'
+    }), 200
+
+@user_profile_bp.route('/deactivate', methods=['POST'])
+@jwt_required()
+def deactivate_account():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+
+    if not user:
+        user_profile_logger.warning(f"User account deactivation failed: User {current_user_id} not found.")
+        return jsonify({'error': 'User not found'}), 404
+    
+    user.is_active = False
+    db.session.commit()
+    
+    user_profile_logger.info(f"User {current_user_id} account deactivated successfully.")
+    return jsonify({
+        'message': 'Account deactivated successfully',
+        'user': user.to_dict()
     }), 200 

@@ -8,7 +8,7 @@ A microservice-based user management and authentication system built with Flask 
 - JWT-based authentication
 - Role-based access control (admin, user)
 - PostgreSQL database integration (Supabase hosted)
-- Swagger API documentation
+- Comprehensive Swagger API documentation using Flasgger
 - Microservice architecture
 - ReactJS frontend for a modern user interface
 
@@ -38,7 +38,7 @@ project/
 │   │   ├── __init__.py
 │   │   ├── config.py
 │   │   ├── db.py
-│   │   └── init_db.py
+│   │   ├── init_db.py
 │   │   └── utils/
 │   │       ├── auth_utils.py
 │   │       └── validators.py
@@ -86,7 +86,7 @@ pip install -r backend/requirements.txt
    JWT_SECRET_KEY="your-secret-key-here"
    ADMIN_SERVICE_PORT=5001
    USER_SERVICE_PORT=5002
-   FLASK_DEBUG=True
+   FLASK_DEBUG=False # Debug mode is now set to False by default
    REACT_APP_ORIGIN=http://localhost:3000
    ```
 
@@ -166,20 +166,15 @@ pip install -r backend/requirements.txt
 - Role-based access control
 - Secure password hashing
 
-## Development
-
-To run Flask services in development mode (enabled by default with `FLASK_DEBUG=True` in `.env`):
-
 ## API Documentation
 
 Access Swagger documentation at:
-- Admin Service: `http://localhost:5001/api/docs`
-- User Service: `http://localhost:5002/api/docs`
+- Admin Service: `http://localhost:5001/apidocs/`
+- User Service: `http://localhost:5002/apidocs/`
 
 ## Recent Updates
 
-- Removed debug statements from frontend and backend files.
-- Updated project structure to reflect current state.
-- Improved error handling in the frontend.
-- Enhanced user profile management.
+- Migrated Swagger UI from `flask_swagger_ui` to `Flasgger` for better compatibility and documentation generation.
+- Added OpenAPI specifications (docstrings) to various API endpoints for improved documentation.
+- Removed unused imports and debug flags from backend services.
 - Updated README.md to reflect the latest changes and improvements. 

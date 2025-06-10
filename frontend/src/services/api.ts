@@ -120,6 +120,17 @@ class ApiService {
     }
   }
 
+  async deactivateOwnAccount(): Promise<boolean> {
+    try {
+      await this.userApi.post("/user/deactivate");
+      this.showNotification("Account deactivated successfully!", "success");
+      return true;
+    } catch (error: any) {
+      this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      return false;
+    }
+  }
+
   // Admin Management
   async getAllUsers(): Promise<User[] | undefined> {
     try {
