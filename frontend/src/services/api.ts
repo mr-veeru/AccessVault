@@ -209,6 +209,33 @@ class ApiService {
     }
   }
 
+  // Admin User Management
+  async getUsers(): Promise<User[]> {
+    const response = await this.adminApi.get('/admin/users');
+    return response.data;
+  }
+
+  async createUser(userData: RegisterData): Promise<User | undefined> {
+    try {
+      const response = await this.adminApi.post<{'message': string, 'user': User}>('/admin/users', userData);
+      this.showNotification('User created successfully!', 'success');
+      return response.data.user;
+    } catch (error) {
+      this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      throw error; // Re-throw the error so the calling component can react appropriately
+    }
+  }
+
+  async deleteUser(userId: number): Promise<void> {
+    try {
+      await this.adminApi.delete(`/admin/users/${userId}`);
+      this.showNotification('User deleted successfully!', 'success');
+    } catch (error) {
+      this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      throw error; // Re-throw the error so calling component can catch it if needed
+    }
+  }
+
   private handleError(error: AxiosError<ApiError>): Error {
     if (error.response) {
       if (error.response.status === 401) {
