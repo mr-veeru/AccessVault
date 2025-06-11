@@ -19,7 +19,9 @@ def get_users():
         'email': user.email,
         'username': user.username,
         'is_active': user.is_active,
-        'created_at': user.created_at.isoformat() if user.created_at else None
+        'created_at': user.created_at.isoformat() if user.created_at else None,
+        'last_login': user.last_login.isoformat() if user.last_login else None,
+        'updated_at': user.updated_at.isoformat() if user.updated_at else None
     } for user in users])
 
 @user_management.route('/users', methods=['POST'])
@@ -119,16 +121,6 @@ def update_user(user_id):
     if 'is_active' in data and isinstance(data['is_active'], bool):
         user.is_active = data['is_active']
         user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} active status to {data['is_active']}.")
-
-    # Password changes should ideally be handled through a separate, explicit endpoint
-    # For this task, we'll allow it if provided, but typically a separate endpoint is more secure
-    if 'password' in data and data['password']:
-        password_validation_result = validate_password(data['password'])
-        if password_validation_result is not True:
-            user_management_logger.warning(f"Admin {current_admin_id} failed to update user {user_id}: {password_validation_result}")
-            return jsonify({'error': password_validation_result}), 400
-        user.set_password(data['password'])
-        user_management_logger.info(f"Admin {current_admin_id} updated password for user {user_id}.")
 
     try:
         db.session.commit()

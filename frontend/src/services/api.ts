@@ -131,6 +131,17 @@ class ApiService {
     }
   }
 
+  async deleteUserAccount(): Promise<boolean> {
+    try {
+      await this.userApi.delete("/user/profile");
+      this.showNotification("Account deleted successfully!", "success");
+      return true;
+    } catch (error: any) {
+      this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      return false;
+    }
+  }
+
   // Admin Management
   async getAllUsers(): Promise<User[] | undefined> {
     try {
@@ -202,6 +213,17 @@ class ApiService {
     try {
       await this.adminApi.put("/admin/auth/change-password", passwordData);
       this.showNotification("Password updated successfully!", "success");
+      return true;
+    } catch (error: any) {
+      this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      return false;
+    }
+  }
+
+  async deleteAdminAccount(): Promise<boolean> {
+    try {
+      await this.adminApi.delete("/admin/profile");
+      this.showNotification("Account deleted successfully!", "success");
       return true;
     } catch (error: any) {
       this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');

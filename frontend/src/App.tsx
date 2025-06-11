@@ -76,23 +76,23 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
-      <nav className="bg-gray-800 dark:bg-gray-950 p-4 shadow-md">
+    <div className="min-h-screen bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text transition-colors duration-300 font-sans">
+      <nav className="bg-primary-700 dark:bg-primary-950 p-4 shadow-custom-light dark:shadow-custom-dark">
         <ul className="flex justify-center space-x-6">
           {!userToken && !adminToken ? (
             <>
               <li>
-                <Link to="/admin-login" className="text-white hover:text-blue-400 text-lg font-medium">
+                <Link to="/admin-login" className="text-white hover:text-primary-200 text-lg font-medium transition-colors duration-200">
                   Admin Login
                 </Link>
               </li>
               <li>
-                <Link to="/user-login" className="text-white hover:text-blue-400 text-lg font-medium">
+                <Link to="/user-login" className="text-white hover:text-primary-200 text-lg font-medium transition-colors duration-200">
                   User Login
                 </Link>
               </li>
               <li>
-                <Link to="/user-register" className="text-white hover:text-blue-400 text-lg font-medium">
+                <Link to="/user-register" className="text-white hover:text-primary-200 text-lg font-medium transition-colors duration-200">
                   User Register
                 </Link>
               </li>
@@ -101,7 +101,7 @@ const App: React.FC = () => {
             <li>
               <button
                 onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-200"
+                className="bg-destructive text-white font-bold py-2 px-4 rounded hover:bg-red-700 transition duration-200 shadow-md"
               >
                 Logout
               </button>
@@ -110,7 +110,7 @@ const App: React.FC = () => {
           <li>
             <button
               onClick={toggleDarkMode}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-200"
+              className="bg-secondary-600 hover:bg-secondary-700 text-white font-bold py-2 px-4 rounded transition duration-200 shadow-md"
             >
               {darkMode ? 'Light Mode' : 'Dark Mode'}
             </button>
@@ -121,15 +121,15 @@ const App: React.FC = () => {
       <Routes>
         <Route
           path="/admin-login"
-          element={<AuthForm type="login" onSubmit={(creds) => handleLogin(creds, 'admin')} />}
+          element={<AuthForm type="login" onSubmit={(creds) => handleLogin(creds, 'admin')} isAdmin={true} />}
         />
         <Route
           path="/user-login"
-          element={<AuthForm type="login" onSubmit={(creds) => handleLogin(creds, 'user')} />}
+          element={<AuthForm type="login" onSubmit={(creds) => handleLogin(creds, 'user')} isAdmin={false} />}
         />
         <Route
           path="/user-register"
-          element={<AuthForm type="register" onSubmit={handleRegister} />}
+          element={<AuthForm type="register" onSubmit={handleRegister} isAdmin={false} />}
         />
         
         {userToken && (
@@ -155,11 +155,11 @@ const App: React.FC = () => {
           path="*"
           element={
             !userToken && !adminToken ? (
-              <h1 className="text-center text-3xl mt-12 text-gray-700 dark:text-gray-300">
+              <h1 className="text-center text-3xl mt-12 text-primary-600 dark:text-primary-300 font-serif">
                 Welcome! Please Login or Register
               </h1>
             ) : (
-              <h1 className="text-center text-3xl mt-12 text-gray-700 dark:text-gray-300">
+              <h1 className="text-center text-3xl mt-12 text-primary-600 dark:text-primary-300 font-serif">
                 Dashboard (Select from Navbar)
               </h1>
             )

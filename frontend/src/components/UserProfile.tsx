@@ -125,17 +125,30 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      try {
+        const success = await apiService.deleteUserAccount();
+        if (success) {
+          onLogout();
+        }
+      } catch (error) {
+        showNotification('Failed to delete account. Please try again.', 'error');
+      }
+    }
+  };
+
   if (!user) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return <div className="flex justify-center items-center h-screen text-primary-600 dark:text-primary-300">Loading user profile...</div>;
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
+    <div className="max-w-2xl mx-auto p-6 bg-light-card dark:bg-dark-card rounded-lg shadow-custom-light dark:shadow-custom-dark border border-light-border dark:border-dark-border">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">User Profile</h2>
+        <h2 className="text-2xl font-serif font-bold text-primary-600 dark:text-primary-300">User Profile</h2>
         <button
           onClick={onLogout}
-          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+          className="px-4 py-2 bg-destructive text-white rounded hover:bg-red-700 transition-colors shadow-md"
         >
           Logout
         </button>
@@ -144,35 +157,35 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
       {isEditing ? (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+            <label className="block text-sm font-medium text-light-text dark:text-dark-text">Username</label>
             <input
               type="text"
               name="username"
               value={formData.username || ''}
               onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 block w-full rounded-md border-light-border dark:border-dark-border shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-dark-background dark:text-dark-text bg-light-background"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+            <label className="block text-sm font-medium text-light-text dark:text-dark-text">Name</label>
             <input
               type="text"
               name="name"
               value={formData.name || ''}
               onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 block w-full rounded-md border-light-border dark:border-dark-border shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-dark-background dark:text-dark-text bg-light-background"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+            <label className="block text-sm font-medium text-light-text dark:text-dark-text">Email</label>
             <input
               type="email"
               name="email"
               value={formData.email || ''}
               onChange={handleInputChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+              className="mt-1 block w-full rounded-md border-light-border dark:border-dark-border shadow-sm focus:border-primary-500 focus:ring-primary-500 dark:bg-dark-background dark:text-dark-text bg-light-background"
             />
           </div>
 
@@ -180,13 +193,13 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
             <button
               type="button"
               onClick={() => setIsEditing(false)}
-              className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+              className="px-4 py-2 border border-light-border dark:border-dark-border rounded-md text-light-text dark:text-dark-text hover:bg-light-background dark:hover:bg-dark-background transition-colors shadow-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors shadow-md"
             >
               Save Changes
             </button>
@@ -195,27 +208,27 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
       ) : (
         <div className="space-y-4">
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Username</h3>
-            <p className="mt-1 text-lg text-gray-900 dark:text-white">{user.username}</p>
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Username:</h3>
+            <p className="text-light-text dark:text-dark-text">{user.username}</p>
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Name</h3>
-            <p className="mt-1 text-lg text-gray-900 dark:text-white">{user.name}</p>
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Name:</h3>
+            <p className="text-light-text dark:text-dark-text">{user.name || 'N/A'}</p>
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</h3>
-            <p className="mt-1 text-lg text-gray-900 dark:text-white">{user.email}</p>
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Email:</h3>
+            <p className="text-light-text dark:text-dark-text">{user.email}</p>
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Account Status</h3>
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Account Status:</h3>
             <p className="mt-1 text-lg">
               <span className={`px-2 py-1 rounded-full text-sm ${
                 user.is_active
-                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                  ? 'bg-accent text-white'
+                  : 'bg-destructive text-white'
               }`}>
                 {user.is_active ? 'Active' : 'Inactive'}
               </span>
@@ -223,16 +236,29 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
           </div>
 
           <div>
-            <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Member Since</h3>
-            <p className="mt-1 text-lg text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Member Since:</h3>
+            <p className="text-light-text dark:text-dark-text">
               {user.created_at ? formatDate(user.created_at) : 'N/A'}
             </p>
           </div>
 
-          <div className="flex justify-end">
+          <div>
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Last Login:</h3>
+            <p className="text-light-text dark:text-dark-text">
+              {user.last_login ? formatDate(user.last_login) : 'N/A'}
+            </p>
+          </div>
+
+          <div className="flex justify-end space-x-4">
+            <button
+              onClick={handleDeleteAccount}
+              className="px-4 py-2 bg-destructive text-white rounded hover:bg-red-700 transition-colors shadow-md"
+            >
+              Delete Account
+            </button>
             <button
               onClick={() => setIsEditing(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors shadow-md"
             >
               Edit Profile
             </button>
@@ -240,11 +266,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
         </div>
       )}
 
-      <div className="mt-8 p-6 bg-white dark:bg-gray-800 shadow-md rounded-lg">
-        <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white text-center">Change Password</h3>
+      <div className="mt-8 p-6 bg-light-card dark:bg-dark-card shadow-custom-light dark:shadow-custom-dark rounded-lg border border-light-border dark:border-dark-border">
+        <h3 className="text-2xl font-serif font-bold mb-4 text-primary-600 dark:text-primary-300 text-center">Change Password</h3>
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
-            <label htmlFor="old_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Old Password</label>
+            <label htmlFor="old_password" className="block text-sm font-medium text-light-text dark:text-dark-text">Old Password</label>
             <div className="relative">
               <input
                 type={showOldPassword ? 'text' : 'password'}
@@ -252,14 +278,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
                 name="old_password"
                 value={passwordData.old_password}
                 onChange={handlePasswordChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white pr-10"
+                className="mt-1 block w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowOldPassword(!showOldPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-secondary-400 hover:text-secondary-600 transition-colors duration-200"
               >
-                <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   {showOldPassword ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.05 3.05m-3.05-3.05L3 3z" />
                   ) : (
@@ -273,7 +299,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
             </div>
           </div>
           <div>
-            <label htmlFor="new_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
+            <label htmlFor="new_password" className="block text-sm font-medium text-light-text dark:text-dark-text">New Password</label>
             <div className="relative">
               <input
                 type={showNewPassword ? 'text' : 'password'}
@@ -281,14 +307,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
                 name="new_password"
                 value={passwordData.new_password}
                 onChange={handlePasswordChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white pr-10"
+                className="mt-1 block w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-secondary-400 hover:text-secondary-600 transition-colors duration-200"
               >
-                <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   {showNewPassword ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.05 3.05m-3.05-3.05L3 3z" />
                   ) : (
@@ -302,7 +328,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
             </div>
           </div>
           <div>
-            <label htmlFor="confirm_new_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New Password</label>
+            <label htmlFor="confirm_new_password" className="block text-sm font-medium text-light-text dark:text-dark-text">Confirm New Password</label>
             <div className="relative">
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
@@ -310,14 +336,14 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
                 name="confirm_new_password"
                 value={passwordData.confirm_new_password}
                 onChange={handlePasswordChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white pr-10"
+                className="mt-1 block w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-secondary-400 hover:text-secondary-600 transition-colors duration-200"
               >
-                <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   {showConfirmPassword ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.05 3.05m-3.05-3.05L3 3z" />
                   ) : (
@@ -333,7 +359,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
           <div className="flex justify-end">
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors shadow-md"
             >
               Change Password
             </button>
@@ -341,12 +367,12 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
         </form>
       </div>
 
-      <div className="mt-8 p-6 bg-white dark:bg-gray-800 shadow-md rounded-lg">
-        <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white text-center">Account Actions</h3>
+      <div className="mt-8 p-6 bg-light-card dark:bg-dark-card shadow-custom-light dark:shadow-custom-dark rounded-lg border border-light-border dark:border-dark-border">
+        <h3 className="text-2xl font-serif font-bold mb-4 text-primary-600 dark:text-primary-300 text-center">Account Actions</h3>
         <div className="flex justify-center mt-4">
           <button
             onClick={handleDeactivateAccount}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            className="px-4 py-2 bg-destructive text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 shadow-md"
           >
             Deactivate My Account
           </button>

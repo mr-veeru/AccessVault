@@ -117,46 +117,59 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      try {
+        const success = await apiService.deleteAdminAccount();
+        if (success) {
+          onLogout();
+        }
+      } catch (error) {
+        showNotification('Failed to delete account. Please try again.', 'error');
+      }
+    }
+  };
+
   if (isLoading) {
-    return <div className="flex justify-center items-center h-screen">Loading admin profile...</div>;
+    return <div className="flex justify-center items-center h-screen text-primary-600 dark:text-primary-300">Loading admin profile...</div>;
   }
 
   if (!admin) {
-    return <div className="text-center mt-8 text-red-500">Admin profile not found.</div>;
+    return <div className="text-center mt-8 text-destructive">Admin profile not found.</div>;
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-800 shadow-md rounded-lg mt-8">
-      <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white text-center">Admin Profile</h2>
+    <div className="max-w-4xl mx-auto p-6 bg-light-card dark:bg-dark-card shadow-custom-light dark:shadow-custom-dark rounded-lg border border-light-border dark:border-dark-border mt-8 font-sans">
+      <h2 className="text-3xl font-serif font-bold mb-6 text-primary-600 dark:text-primary-300 text-center">Admin Profile</h2>
 
       {!isEditing ? (
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Username:</h3>
-            <p className="text-gray-900 dark:text-white">{admin.username}</p>
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Username:</h3>
+            <p className="text-light-text dark:text-dark-text">{admin.username}</p>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Name:</h3>
-            <p className="text-gray-900 dark:text-white">{admin.name || 'N/A'}</p>
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Name:</h3>
+            <p className="text-light-text dark:text-dark-text">{admin.name || 'N/A'}</p>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Email:</h3>
-            <p className="text-gray-900 dark:text-white">{admin.email}</p>
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Email:</h3>
+            <p className="text-light-text dark:text-dark-text">{admin.email}</p>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Role:</h3>
-            <p className="text-gray-900 dark:text-white">{admin.role}</p>
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Role:</h3>
+            <p className="text-light-text dark:text-dark-text">{admin.role}</p>
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300">Member Since:</h3>
-            <p className="text-gray-900 dark:text-white">
+            <h3 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Member Since:</h3>
+            <p className="text-light-text dark:text-dark-text">
               {admin.created_at ? formatDate(admin.created_at) : 'N/A'}
             </p>
           </div>
           <div className="flex justify-center mt-6">
             <button
               onClick={() => setIsEditing(true)}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors"
+              className="px-6 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50 transition-colors shadow-md"
             >
               Edit Profile
             </button>
@@ -165,49 +178,49 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
       ) : (
         <form onSubmit={handleUpdateProfile} className="space-y-4">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Username</label>
+            <label htmlFor="username" className="block text-sm font-medium text-light-text dark:text-dark-text">Username</label>
             <input
               type="text"
               id="username"
               name="username"
               value={formData.username}
               onChange={handleInputChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="mt-1 block w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text"
             />
           </div>
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Name</label>
+            <label htmlFor="name" className="block text-sm font-medium text-light-text dark:text-dark-text">Name</label>
             <input
               type="text"
               id="name"
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="mt-1 block w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text"
             />
           </div>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+            <label htmlFor="email" className="block text-sm font-medium text-light-text dark:text-dark-text">Email</label>
             <input
               type="email"
               id="email"
               name="email"
               value={formData.email}
               onChange={handleInputChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="mt-1 block w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text"
             />
           </div>
           <div className="flex justify-end space-x-3 mt-6">
             <button
               type="button"
               onClick={() => setIsEditing(false)}
-              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="px-4 py-2 border border-light-border dark:border-dark-border rounded-md text-light-text dark:text-dark-text hover:bg-light-background dark:hover:bg-dark-background transition-colors shadow-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors shadow-md"
             >
               Save Changes
             </button>
@@ -215,11 +228,11 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
         </form>
       )}
 
-      <div className="mt-8 p-6 bg-white dark:bg-gray-800 shadow-md rounded-lg">
-        <h3 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white text-center">Change Password</h3>
+      <div className="mt-8 p-6 bg-light-card dark:bg-dark-card shadow-custom-light dark:shadow-custom-dark rounded-lg border border-light-border dark:border-dark-border">
+        <h3 className="text-2xl font-serif font-bold mb-4 text-primary-600 dark:text-primary-300 text-center">Change Password</h3>
         <form onSubmit={handleChangePassword} className="space-y-4">
           <div>
-            <label htmlFor="old_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Old Password</label>
+            <label htmlFor="old_password" className="block text-sm font-medium text-light-text dark:text-dark-text">Old Password</label>
             <div className="relative">
               <input
                 type={showOldPassword ? 'text' : 'password'}
@@ -227,14 +240,14 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
                 name="old_password"
                 value={passwordData.old_password}
                 onChange={handlePasswordChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white pr-10"
+                className="mt-1 block w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowOldPassword(!showOldPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-secondary-400 hover:text-secondary-600 transition-colors duration-200"
               >
-                <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   {showOldPassword ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.05 3.05m-3.05-3.05L3 3z" />
                   ) : (
@@ -248,7 +261,7 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
             </div>
           </div>
           <div>
-            <label htmlFor="new_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
+            <label htmlFor="new_password" className="block text-sm font-medium text-light-text dark:text-dark-text">New Password</label>
             <div className="relative">
               <input
                 type={showNewPassword ? 'text' : 'password'}
@@ -256,14 +269,14 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
                 name="new_password"
                 value={passwordData.new_password}
                 onChange={handlePasswordChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white pr-10"
+                className="mt-1 block w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowNewPassword(!showNewPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-secondary-400 hover:text-secondary-600 transition-colors duration-200"
               >
-                <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   {showNewPassword ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.05 3.05m-3.05-3.05L3 3z" />
                   ) : (
@@ -277,7 +290,7 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
             </div>
           </div>
           <div>
-            <label htmlFor="confirm_new_password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm New Password</label>
+            <label htmlFor="confirm_new_password" className="block text-sm font-medium text-light-text dark:text-dark-text">Confirm New Password</label>
             <div className="relative">
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
@@ -285,14 +298,14 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
                 name="confirm_new_password"
                 value={passwordData.confirm_new_password}
                 onChange={handlePasswordChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white pr-10"
+                className="mt-1 block w-full px-3 py-2 border border-light-border dark:border-dark-border rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text pr-10"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-secondary-400 hover:text-secondary-600 transition-colors duration-200"
               >
-                <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   {showConfirmPassword ? (
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.05 3.05m-3.05-3.05L3 3z" />
                   ) : (
@@ -308,7 +321,7 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
           <div className="flex justify-end">
             <button
               type="submit"
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors shadow-md"
             >
               Change Password
             </button>
@@ -316,16 +329,22 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
         </form>
       </div>
 
-      <div className="flex justify-center mt-6">
+      <div className="mt-8 flex justify-center space-x-4">
         <button
           onClick={() => navigate('/admin-dashboard')}
-          className="px-6 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-50 transition-colors"
+          className="px-6 py-2 bg-secondary-600 text-white rounded-md hover:bg-secondary-700 focus:outline-none focus:ring-2 focus:ring-secondary-500 focus:ring-offset-2 shadow-md"
         >
           Back to Dashboard
+        </button>
+        <button
+          onClick={handleDeleteAccount}
+          className="px-6 py-2 bg-destructive text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 shadow-md"
+        >
+          Delete Account
         </button>
       </div>
     </div>
   );
 };
 
-export default AdminProfile; 
+export default AdminProfile;

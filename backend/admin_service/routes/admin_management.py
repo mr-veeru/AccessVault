@@ -29,42 +29,6 @@ def get_user(user_id):
     admin_management_logger.info(f"Admin fetched details for user '{user.username}' (ID: {user_id}).")
     return jsonify(user.to_dict()), 200
 
-@admin_management_bp.route('/users/<int:user_id>/deactivate', methods=['POST'])
-@jwt_required()
-@admin_required
-def deactivate_user(user_id):
-    user = User.query.get(user_id)
-    if not user:
-        admin_management_logger.warning(f"Deactivation failed for user {user_id}: User not found.")
-        return jsonify({'message': 'User not found'}), 404
-    
-    user.is_active = False
-    db.session.commit()
-    
-    admin_management_logger.info(f"User {user_id} deactivated successfully.")
-    return jsonify({
-        'message': f'User {user_id} has been deactivated',
-        'user': user.to_dict()
-    }), 200
-
-@admin_management_bp.route('/users/<int:user_id>/activate', methods=['POST'])
-@jwt_required()
-@admin_required
-def activate_user(user_id):
-    user = User.query.get(user_id)
-    if not user:
-        admin_management_logger.warning(f"Activation failed for user {user_id}: User not found.")
-        return jsonify({'message': 'User not found'}), 404
-    
-    user.is_active = True
-    db.session.commit()
-    
-    admin_management_logger.info(f"User {user_id} activated successfully.")
-    return jsonify({
-        'message': f'User {user_id} has been activated',
-        'user': user.to_dict()
-    }), 200
-
 @admin_management_bp.route('/settings', methods=['GET'])
 @jwt_required()
 @admin_required

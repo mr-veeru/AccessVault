@@ -3,7 +3,7 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from datetime import datetime
 from admin_service.models import Admin
 from shared.db import db
-from shared.utils.validators import validate_password, validate_username, validate_email
+from shared.utils.validators import validate_password
 from shared.logger import setup_logging
 
 admin_auth_bp = Blueprint('admin_auth', __name__)
