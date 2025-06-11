@@ -117,6 +117,7 @@ project/
 │   │       ├── auth_utils.py             # Authentication helper decorators
 │   │       └── validators.py             # Input validation functions
 │   │
+│   ├── .env                              # Backend environment variables
 │   └── requirements.txt                  # Python dependencies
 │
 ├── frontend/                             # ReactJS single-page application
@@ -135,7 +136,6 @@ project/
 │   ├── .env.development                  # Frontend environment variables (optional, for specific environments)
 │   └── ... (other React project files)
 │
-├── .env                                  # Backend environment variables
 ├── README.md                             # Project overview and setup guide
 ├── TESTING_GUIDE.md                      # Guide for running tests and manual testing steps
 ├── .gitignore                            # Git ignore configurations
