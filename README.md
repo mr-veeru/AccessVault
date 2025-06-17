@@ -37,9 +37,9 @@ Follow these steps to set up and run AccessVault on your local machine.
     ```
 
 2.  **Install Python dependencies:**
-    ```bash
-    pip install -r backend/requirements.txt
-    ```
+```bash
+pip install -r backend/requirements.txt
+```
 
 3.  **Configure environment variables:**
     *   Create a `.env` file in the project root (`AccessVault/.env`).
@@ -47,48 +47,48 @@ Follow these steps to set up and run AccessVault on your local machine.
     *   **Important:** Replace placeholders with your actual values.
 
     ```dotenv
-    DATABASE_URL="postgresql://postgres:postgres@localhost:5432/accessvault"
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/accessvault"
     JWT_SECRET_KEY="a_very_strong_and_secret_key_for_jwt_tokens" # **CHANGE THIS IN PRODUCTION**
-    ADMIN_SERVICE_PORT=5001
-    USER_SERVICE_PORT=5002
+   ADMIN_SERVICE_PORT=5001
+   USER_SERVICE_PORT=5002
     FLASK_DEBUG=False
-    REACT_APP_ORIGIN=http://localhost:3000
-    ```
+   REACT_APP_ORIGIN=http://localhost:3000
+   ```
 
 4.  **Initialize the database and create a default admin user:**
     (Ensure your PostgreSQL database is running and accessible)
-    ```bash
+   ```bash
     python backend/shared/init_db.py <username> <email> <password> <name>
     # Example: python backend/shared/init_db.py adminuser admin@example.com StrongPass!123 AdminName
-    ```
+   ```
 
 5.  **Run the backend services (in separate terminal windows):**
 
     *   **Admin Service:**
-        ```bash
-        python backend/admin_service/app.py
-        ```
+   ```bash
+   python backend/admin_service/app.py
+   ```
     *   **User Service:**
-        ```bash
-        python backend/user_service/app.py
-        ```
+   ```bash
+   python backend/user_service/app.py
+   ```
 
 ### Frontend Setup (ReactJS)
 
 1.  **Navigate to the frontend directory:**
-    ```bash
-    cd frontend
-    ```
+   ```bash
+   cd frontend
+   ```
 
 2.  **Install Node.js dependencies:**
-    ```bash
-    npm install
+   ```bash
+   npm install
     # or yarn install
-    ```
+   ```
 
 3.  **Start the React development server:**
-    ```bash
-    npm start
+   ```bash
+   npm start
     # or yarn start
     ```
     This will typically open the application in your web browser at `http://localhost:3000`.

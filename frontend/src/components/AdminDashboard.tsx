@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { User, RegisterData } from '../types';
 import { apiService } from '../services/api';
 import { Link } from 'react-router-dom';
+import ConfirmationDialog from './ConfirmationDialog';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -26,6 +27,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [editUserData, setEditUserData] = useState<Partial<User>>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{ id: number; username: string } | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -45,17 +48,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   };
 
   const handleDeleteUser = async (userId: number, username: string) => {
-    if (window.confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
-      try {
-        await apiService.deleteUser(userId);
-        fetchUsers();
-        if (selectedUser?.id === userId) {
-          setSelectedUser(null);
-        }
-      } catch (err) {
-        // Error handling is now done by apiService
+    setUserToDelete({ id: userId, username });
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    
+    try {
+      await apiService.deleteUser(userToDelete.id);
+      fetchUsers();
+      if (selectedUser?.id === userToDelete.id) {
+        setSelectedUser(null);
       }
+    } catch (err) {
+      // Error handling is now done by apiService
+    } finally {
+      setShowDeleteConfirm(false);
+      setUserToDelete(null);
     }
+  };
+
+  const cancelDeleteUser = () => {
+    setShowDeleteConfirm(false);
+    setUserToDelete(null);
   };
 
   const handleViewUserDetails = async (userId: number) => {
@@ -286,8 +302,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 </div>
               </div>
             </div>
-          </div>
-        )}
+            </div>
+          )}
       </div>
 
       {/* Add User Modal */}
@@ -449,6 +465,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           </div>
         </div>
       )}
+
+      <ConfirmationDialog
+        message={`Are you sure you want to delete user "${userToDelete?.username}"? This action cannot be undone.`}
+        isOpen={showDeleteConfirm}
+        onConfirm={confirmDeleteUser}
+        onCancel={cancelDeleteUser}
+      />
     </div>
   );
 };

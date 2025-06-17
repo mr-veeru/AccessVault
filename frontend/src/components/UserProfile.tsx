@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, ProfileUpdateData } from '../types';
+import { User } from '../types';
 import { apiService } from '../services/api';
 import { useNotification } from '../context/NotificationContext';
+import ConfirmationDialog from './ConfirmationDialog';
 
 interface UserProfileProps {
   onLogout: () => void;
@@ -19,7 +20,7 @@ const formatDate = (dateString: string) => {
 const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState<ProfileUpdateData>({});
+  const [formData, setFormData] = useState<Partial<User>>({});
   const [passwordData, setPasswordData] = useState({
     old_password: '',
     new_password: '',
@@ -29,6 +30,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDeactivateConfirm, setShowDeactivateConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
     fetchUserProfile();
@@ -112,8 +115,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
     }
   };
 
-  const handleDeactivateAccount = async () => {
-    if (window.confirm('Are you sure you want to deactivate your account? This action cannot be undone.')) {
+  const handleDeactivateAccount = () => {
+    setShowDeactivateConfirm(true);
+  };
+
+  const confirmDeactivateAccount = async () => {
       try {
         const success = await apiService.deactivateOwnAccount();
         if (success) {
@@ -121,21 +127,34 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
         }
       } catch (error) {
         showNotification('Failed to deactivate account. Please try again.', 'error');
-      }
+    } finally {
+      setShowDeactivateConfirm(false);
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      try {
-        const success = await apiService.deleteUserAccount();
-        if (success) {
-          onLogout();
-        }
-      } catch (error) {
-        showNotification('Failed to delete account. Please try again.', 'error');
+  const cancelDeactivateAccount = () => {
+    setShowDeactivateConfirm(false);
+  };
+
+  const handleDeleteAccount = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteAccount = async () => {
+    try {
+      const success = await apiService.deleteUserAccount();
+      if (success) {
+        onLogout();
       }
+    } catch (error) {
+      showNotification('Failed to delete account. Please try again.', 'error');
+    } finally {
+      setShowDeleteConfirm(false);
     }
+  };
+
+  const cancelDeleteAccount = () => {
+    setShowDeleteConfirm(false);
   };
 
   if (!user) {
@@ -369,15 +388,35 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
 
       <div className="mt-8 p-6 bg-light-card dark:bg-dark-card shadow-custom-light dark:shadow-custom-dark rounded-lg border border-light-border dark:border-dark-border">
         <h3 className="text-2xl font-serif font-bold mb-4 text-primary-600 dark:text-primary-300 text-center">Account Actions</h3>
-        <div className="flex justify-center mt-4">
+        <div className="flex justify-center space-x-4">
           <button
             onClick={handleDeactivateAccount}
             className="px-4 py-2 bg-destructive text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 shadow-md"
           >
             Deactivate My Account
           </button>
+          <button
+            onClick={handleDeleteAccount}
+            className="px-4 py-2 bg-destructive text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 shadow-md"
+          >
+            Delete My Account
+          </button>
         </div>
       </div>
+
+      <ConfirmationDialog
+        message="Are you sure you want to deactivate your account? This action cannot be undone."
+        isOpen={showDeactivateConfirm}
+        onConfirm={confirmDeactivateAccount}
+        onCancel={cancelDeactivateAccount}
+      />
+
+      <ConfirmationDialog
+        message="Are you sure you want to delete your account? This action cannot be undone."
+        isOpen={showDeleteConfirm}
+        onConfirm={confirmDeleteAccount}
+        onCancel={cancelDeleteAccount}
+      />
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { Admin } from '../types';
 import { apiService } from '../services/api';
 import { useNotification } from '../context/NotificationContext';
 import { useNavigate } from 'react-router-dom';
+import ConfirmationDialog from './ConfirmationDialog';
 
 interface AdminProfileProps {
   onLogout: () => void;
@@ -35,6 +36,7 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const navigate = useNavigate();
 
   const fetchAdminProfile = useCallback(async () => {
@@ -117,17 +119,20 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-      try {
-        const success = await apiService.deleteAdminAccount();
-        if (success) {
-          onLogout();
-        }
-      } catch (error) {
-        showNotification('Failed to delete account. Please try again.', 'error');
+  const confirmDeleteAccount = async () => {
+    setShowDeleteConfirm(false);
+    try {
+      const success = await apiService.deleteAdminAccount();
+      if (success) {
+        onLogout();
       }
+    } catch (error) {
+      showNotification('Failed to delete account. Please try again.', 'error');
     }
+  };
+
+  const cancelDeleteAccount = () => {
+    setShowDeleteConfirm(false);
   };
 
   if (isLoading) {
@@ -337,14 +342,21 @@ const AdminProfile: React.FC<AdminProfileProps> = ({ onLogout }) => {
           Back to Dashboard
         </button>
         <button
-          onClick={handleDeleteAccount}
+          onClick={() => setShowDeleteConfirm(true)}
           className="px-6 py-2 bg-destructive text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2 shadow-md"
         >
           Delete Account
         </button>
       </div>
+
+      <ConfirmationDialog
+        message="Are you sure you want to delete your account? This action cannot be undone."
+        isOpen={showDeleteConfirm}
+        onConfirm={confirmDeleteAccount}
+        onCancel={cancelDeleteAccount}
+      />
     </div>
   );
 };
 
-export default AdminProfile;
+export default AdminProfile; 
