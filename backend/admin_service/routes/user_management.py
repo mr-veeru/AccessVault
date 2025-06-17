@@ -78,6 +78,36 @@ def create_user():
         'user': user.to_dict()
     }), 201
 
+@user_management.route('/users/<int:user_id>/role', methods=['PUT'])
+@jwt_required()
+@admin_required
+def change_user_role(user_id):
+    user = User.query.get_or_404(user_id)
+    data = request.get_json()
+    current_admin_id = get_jwt_identity()
+
+    # Prevent admin from changing their own role
+    if user.id == current_admin_id:
+        user_management_logger.warning(f"Admin {current_admin_id} attempted to change their own role.")
+        return jsonify({'error': 'Cannot change your own role'}), 400
+
+    if 'role' not in data:
+        return jsonify({'error': 'Role is required'}), 400
+
+    new_role = data['role'].lower()
+    if new_role not in ['user', 'admin']:
+        user_management_logger.warning(f"Admin {current_admin_id} attempted to set invalid role '{new_role}' for user {user_id}.")
+        return jsonify({'error': 'Invalid role. Must be either "user" or "admin"'}), 400
+
+    user.role = new_role
+    db.session.commit()
+    
+    user_management_logger.info(f"Admin {current_admin_id} changed role of user {user_id} to {new_role}.")
+    return jsonify({
+        'message': f'User role updated to {new_role}',
+        'user': user.to_dict()
+    }), 200
+
 @user_management.route('/users/<int:user_id>', methods=['PUT'])
 @jwt_required()
 @admin_required
@@ -92,6 +122,14 @@ def update_user(user_id):
         user_management_logger.warning(f"Admin {current_admin_id} attempted to edit their own account via user management.")
         return jsonify({'error': 'Cannot edit your own account via this interface.'}), 400
 
+    if 'role' in data:
+        new_role = data['role'].lower()
+        if new_role not in ['user', 'admin']:
+            user_management_logger.warning(f"Admin {current_admin_id} attempted to set invalid role '{new_role}' for user {user_id}.")
+            return jsonify({'error': 'Invalid role. Must be either "user" or "admin"'}), 400
+        user.role = new_role
+        user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} role to {new_role}.")
+
     if 'username' in data:
         new_username = data['username'].lower()
         if not validate_username(new_username):
@@ -102,6 +140,10 @@ def update_user(user_id):
             return jsonify({'error': 'Username already exists'}), 400
         user.username = new_username
         user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} username to {new_username}.")
+
+    if 'name' in data:
+        user.name = data['name']
+        user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} name to {data['name']}.")
 
     if 'email' in data:
         new_email = data['email'].lower()
@@ -114,22 +156,15 @@ def update_user(user_id):
         user.email = new_email
         user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} email to {new_email}.")
 
-    if 'name' in data:
-        user.name = data['name']
-        user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} name to {data['name']}.")
+    if 'is_active' in data:
+        user.is_active = bool(data['is_active'])
+        user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} active status to {user.is_active}.")
 
-    if 'is_active' in data and isinstance(data['is_active'], bool):
-        user.is_active = data['is_active']
-        user_management_logger.info(f"Admin {current_admin_id} updated user {user_id} active status to {data['is_active']}.")
-
-    try:
-        db.session.commit()
-        user_management_logger.info(f"User {user_id} details updated successfully by admin {current_admin_id}.")
-        return jsonify({'message': 'User updated successfully', 'user': user.to_dict()}), 200
-    except Exception as e:
-        db.session.rollback()
-        user_management_logger.error(f"Admin {current_admin_id} failed to update user {user_id}: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+    db.session.commit()
+    return jsonify({
+        'message': 'User updated successfully',
+        'user': user.to_dict()
+    }), 200
 
 @user_management.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()

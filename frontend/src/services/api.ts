@@ -258,10 +258,21 @@ class ApiService {
     }
   }
 
-  async updateUser(userId: number, userData: Partial<RegisterData> & { is_active?: boolean }): Promise<User | undefined> {
+  async updateUser(userId: number, userData: Partial<User>): Promise<User | undefined> {
     try {
       const response = await this.adminApi.put<{'message': string, 'user': User}>(`/admin/users/${userId}`, userData);
       this.showNotification('User updated successfully!', 'success');
+      return response.data.user;
+    } catch (error) {
+      this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      throw error;
+    }
+  }
+
+  async changeUserRole(userId: number, role: 'user' | 'admin'): Promise<User | undefined> {
+    try {
+      const response = await this.adminApi.put<{'message': string, 'user': User}>(`/admin/users/${userId}/role`, { role });
+      this.showNotification(`User role changed to ${role}!`, 'success');
       return response.data.user;
     } catch (error) {
       this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');

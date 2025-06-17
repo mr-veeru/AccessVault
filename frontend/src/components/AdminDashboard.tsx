@@ -59,10 +59,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       await apiService.deleteUser(userToDelete.id);
       fetchUsers();
       if (selectedUser?.id === userToDelete.id) {
-        setSelectedUser(null);
-      }
-    } catch (err) {
-      // Error handling is now done by apiService
+          setSelectedUser(null);
+        }
+      } catch (err) {
+        // Error handling is now done by apiService
     } finally {
       setShowDeleteConfirm(false);
       setUserToDelete(null);
@@ -136,10 +136,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
     if (!editUserData.id) return;
 
     try {
-      await apiService.updateUser(editUserData.id, editUserData);
+      const updatedUser = await apiService.updateUser(editUserData.id, editUserData);
       fetchUsers();
       setShowEditUserModal(false);
       setSelectedUser(null);
+
+      // If the user's role was changed to admin, log them out
+      if (updatedUser && updatedUser.role === 'admin') {
+        onLogout();
+      }
     } catch (err) {
       // apiService handles notifications
     }
@@ -275,6 +280,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                 <div>
                   <h4 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Name:</h4>
                   <p className="text-light-text dark:text-dark-text">{selectedUser.name || 'N/A'}</p>
+                </div>
+                <div>
+                  <h4 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Role:</h4>
+                  <div className="flex items-center space-x-2">
+                    <p className="text-light-text dark:text-dark-text">{selectedUser.role}</p>
+                    <button
+                      onClick={() => handleEditUserClick(selectedUser)}
+                      className="text-secondary-600 hover:text-secondary-800 dark:text-secondary-400 dark:hover:text-secondary-200 transition-colors duration-200"
+                    >
+                      Change Role
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <h4 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Account Status:</h4>
@@ -432,6 +449,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   className="mt-1 block w-full rounded-md border-light-border dark:border-dark-border shadow-sm focus:border-primary-500 focus:ring-primary-500 bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text"
                   required
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-light-text dark:text-dark-text">Role</label>
+                <select
+                  name="role"
+                  value={editUserData.role || 'user'}
+                    onChange={handleEditUserChange}
+                  className="mt-1 block w-full rounded-md border-light-border dark:border-dark-border shadow-sm focus:border-primary-500 focus:ring-primary-500 bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text py-2 px-3"
+                  >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
               <div>
                 <label htmlFor="is_active" className="block text-sm font-medium text-light-text dark:text-dark-text">Account Status</label>

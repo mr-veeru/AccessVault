@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime
 from admin_service.models import Admin
+from user_service.models import User
 from shared.db import db
 from shared.utils.validators import validate_password
 from shared.logger import setup_logging
@@ -24,10 +25,36 @@ def login():
         admin_auth_logger.warning("Admin login failed: Missing username/email.")
         return jsonify({'error': 'Missing username/email'}), 400
 
-    # Try to find admin by username or email
+    # First try to find admin in admins table
     admin = Admin.query.filter_by(username=login_identifier).first()
     if not admin:
         admin = Admin.query.filter_by(email=login_identifier).first()
+    
+    # If not found in admins table, check users table for users with admin role
+    if not admin:
+        user = User.query.filter_by(username=login_identifier).first()
+        if not user:
+            user = User.query.filter_by(email=login_identifier).first()
+        
+        if user and user.role == 'admin' and user.check_password(data['password']):
+            if not user.is_active:
+                admin_auth_logger.warning(f"Admin login failed for '{login_identifier}': Account is deactivated.")
+                return jsonify({'error': 'Account is deactivated'}), 403
+            
+            # Update last login
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            
+            # Create access token
+            access_token = create_access_token(
+                identity=str(user.id),
+                additional_claims={'role': user.role}
+            )
+            admin_auth_logger.info(f"Admin user '{user.username}' ({user.email}) logged in successfully.")
+            return jsonify({
+                'access_token': access_token,
+                'admin': user.to_dict()
+            }), 200
     
     if not admin or not admin.check_password(data['password']):
         admin_auth_logger.warning(f"Admin login failed for '{login_identifier}': Invalid credentials.")
@@ -55,17 +82,27 @@ def login():
 @admin_auth_bp.route('/verify', methods=['GET'])
 @jwt_required()
 def verify_token():
-    current_admin_id = get_jwt_identity()
-    admin = Admin.query.get(current_admin_id)
+    admin_id = get_jwt_identity()
+    admin = Admin.query.get(admin_id)
+    
+    # If not found in admins table, check users table
+    if not admin:
+        user = User.query.get(admin_id)
+        if user and user.role == 'admin':
+            admin_auth_logger.info(f"Admin token verified for user '{user.username}' ({user.email}).")
+            return jsonify({
+                'admin': user.to_dict(),
+                'message': 'Token is valid'
+            }), 200
     
     if not admin:
-        admin_auth_logger.warning(f"Admin token verification failed: Admin {current_admin_id} not found.")
+        admin_auth_logger.warning(f"Admin token verification failed: Admin {admin_id} not found.")
         return jsonify({'error': 'Admin not found'}), 404
     
-    admin_auth_logger.info(f"Admin token for admin {current_admin_id} verified successfully.")
+    admin_auth_logger.info(f"Admin token verified for '{admin.username}' ({admin.email}).")
     return jsonify({
-        'message': 'Token is valid',
-        'admin': admin.to_dict()
+        'admin': admin.to_dict(),
+        'message': 'Token is valid'
     }), 200
 
 @admin_auth_bp.route('/change-password', methods=['PUT'])
