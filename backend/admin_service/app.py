@@ -54,4 +54,4 @@ def create_app():
 if __name__ == '__main__':
     app = create_app()
     admin_service_logger.info(f"Admin Service running on port {os.getenv('ADMIN_SERVICE_PORT', 5001)}")
-    app.run(port=int(os.getenv('ADMIN_SERVICE_PORT', 5001)), debug=True) 
+    app.run(port=int(os.getenv('ADMIN_SERVICE_PORT', 5001)), debug=os.getenv('FLASK_DEBUG', 'False').lower() == 'true') 

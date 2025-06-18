@@ -40,10 +40,8 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
   const fetchUserProfile = async () => {
     try {
       const userData = await apiService.getUserProfile();
-      console.log('User data fetched:', userData); // For debugging
       if (userData) {
         setUser(userData);
-        console.log('User state after fetchUserProfile:', userData); // New log
         setFormData({
           username: userData.username,
           name: userData.name,
@@ -53,7 +51,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ onLogout }) => {
         setUser(null);
       }
     } catch (err) {
-      console.error('Error fetching user profile:', err); // For debugging
+      // Error handling is done by apiService
     }
   };
 

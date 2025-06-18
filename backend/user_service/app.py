@@ -52,4 +52,4 @@ def create_app():
 if __name__ == '__main__':
     app = create_app()
     user_service_logger.info(f"User Service running on port {os.getenv('USER_SERVICE_PORT', 5002)}")
-    app.run(port=int(os.getenv('USER_SERVICE_PORT', 5002)), debug=True) 
+    app.run(port=int(os.getenv('USER_SERVICE_PORT', 5002)), debug=os.getenv('FLASK_DEBUG', 'False').lower() == 'true') 

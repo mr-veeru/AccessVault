@@ -17,6 +17,7 @@ def clean_old_logs(log_dir: Path, retention_days: int):
     Deletes log files older than retention_days from the specified directory.
     Assumes log files are named with a date suffix like 'application.log.YYYY-MM-DD'.
     """
+    logger = logging.getLogger(__name__)
     for log_file in log_dir.glob('*.log.*'): # Look for rotated log files
         try:
             # Extract date from filename (e.g., application.log.2025-06-09)
@@ -25,11 +26,11 @@ def clean_old_logs(log_dir: Path, retention_days: int):
             
             if datetime.now().date() - log_date > timedelta(days=retention_days):
                 os.remove(log_file)
-                print(f"Deleted old log file: {log_file}")
+                logger.info(f"Deleted old log file: {log_file}")
         except ValueError: # Not a date-suffixed log file (e.g., if .log has no date yet)
             continue
         except Exception as e:
-            print(f"Error deleting log file {log_file}: {e}")
+            logger.error(f"Error deleting log file {log_file}: {e}")
 
 def setup_logging(name):
     """
