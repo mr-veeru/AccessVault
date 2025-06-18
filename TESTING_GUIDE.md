@@ -17,7 +17,7 @@ This guide provides `curl` commands for quick and effective testing of the Admin
 
 ### A. Admin Login
 
--   **Description**: Authenticate an administrator to obtain a JWT access token. This token is required for all other admin-specific endpoints.
+-   **Description**: Authenticate an administrator to obtain a JWT access token. This token is required for all other admin-specific endpoints. Supports both dedicated admin accounts and users with admin role.
 -   **Sample Input**:
     ```json
     {
@@ -96,13 +96,13 @@ This guide provides `curl` commands for quick and effective testing of the Admin
     }
     ```
 
-### D. Update User Details (including Activate/Deactivate)
+### D. Update User Details (including Role Change)
 
--   **Description**: Modify a user's details, including their username, email, name, or account status (`is_active`). (Admin role required)
--   **Sample Input (to activate/deactivate)**:
+-   **Description**: Modify a user's details, including their username, email, name, role, or account status (`is_active`). (Admin role required)
+-   **Sample Input (to change role to admin)**:
     ```json
     {
-        "is_active": false
+        "role": "admin"
     }
     ```
 -   **Sample Input (to update name/email)**:
@@ -112,12 +112,18 @@ This guide provides `curl` commands for quick and effective testing of the Admin
         "email": "newemail@example.com"
     }
     ```
--   **cURL Command (Example for deactivation)**:
+-   **Sample Input (to activate/deactivate)**:
+    ```json
+    {
+        "is_active": false
+    }
+    ```
+-   **cURL Command (Example for role change)**:
     ```bash
     curl -X PUT http://localhost:5001/admin/users/<USER_ID> \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer <YOUR_ADMIN_ACCESS_TOKEN>" \
-      -d '{"is_active": false}'
+      -d '{"role": "admin"}'
     ```
 -   **Expected Output**: A JSON object confirming the update and showing the modified user details.
     ```json
@@ -127,15 +133,16 @@ This guide provides `curl` commands for quick and effective testing of the Admin
             "created_at": "YYYY-MM-DDTHH:MM:SS.ffffff",
             "email": "testuser@example.com",
             "id": 2,
-            "is_active": false, # Will reflect the new status
+            "is_active": true,
             "last_login": "YYYY-MM-DDTHH:MM:SS.ffffff",
             "name": "Test User",
-            "role": "user",
+            "role": "admin", # Role has been changed to admin
             "updated_at": "YYYY-MM-DDTHH:MM:SS.ffffff",
             "username": "testuser"
         }
     }
     ```
+-   **Important Note**: When a user's role is changed to admin, they will need to log out and log back in through the admin login endpoint to get admin privileges.
 
 ### E. Delete User
 
@@ -249,7 +256,7 @@ This guide provides `curl` commands for quick and effective testing of the Admin
 
 ### B. User Login
 
--   **Description**: Authenticate a user to obtain an access token. This token is required for all other user-specific endpoints.
+-   **Description**: Authenticate a user to obtain a JWT access token. This token is required for all other user-specific endpoints.
 -   **Sample Input**:
     ```json
     {
@@ -266,7 +273,7 @@ This guide provides `curl` commands for quick and effective testing of the Admin
 -   **Expected Output**: A JSON object containing an `access_token` and `user` details. **Copy the `access_token`** for subsequent user requests.
     ```json
     {
-        "access_token": "<your_user_jwt_token_here>",
+        "access_token": "<your_jwt_token_here>",
         "user": {
             "created_at": "YYYY-MM-DDTHH:MM:SS.ffffff",
             "email": "newuser@example.com",
@@ -387,4 +394,172 @@ This guide provides `curl` commands for quick and effective testing of the Admin
             "username": "newuser"
         }
     }
-    ``` 
+    ```
+
+## 3. Testing Role Change Scenarios
+
+### A. Promoting a User to Admin
+
+1. **Register a new user** (if not already done):
+   ```bash
+   curl -X POST http://localhost:5002/user/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{"username": "promoteuser", "email": "promote@example.com", "password": "UserPass!123", "name": "Promote User"}'
+   ```
+
+2. **Login as admin** and get admin token:
+   ```bash
+   curl -X POST http://localhost:5001/admin/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"username_or_email": "superadmin", "password": "StrongPass!123"}'
+   ```
+
+3. **Change user role to admin**:
+   ```bash
+   curl -X PUT http://localhost:5001/admin/users/<USER_ID> \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <YOUR_ADMIN_ACCESS_TOKEN>" \
+     -d '{"role": "admin"}'
+   ```
+
+4. **Login as the promoted user** through admin login:
+   ```bash
+   curl -X POST http://localhost:5001/admin/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"username_or_email": "promoteuser", "password": "UserPass!123"}'
+   ```
+
+5. **Verify admin access** using the new admin token:
+   ```bash
+   curl -X GET http://localhost:5001/admin/users \
+     -H "Authorization: Bearer <NEW_ADMIN_ACCESS_TOKEN>"
+   ```
+
+### B. Testing Role Change Edge Cases
+
+1. **Try to access admin endpoints with user token**:
+   ```bash
+   curl -X GET http://localhost:5001/admin/users \
+     -H "Authorization: Bearer <USER_ACCESS_TOKEN>"
+   ```
+   Expected: 401 Unauthorized
+
+2. **Try to change role without admin privileges**:
+   ```bash
+   curl -X PUT http://localhost:5001/admin/users/<USER_ID> \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer <USER_ACCESS_TOKEN>" \
+     -d '{"role": "admin"}'
+   ```
+   Expected: 401 Unauthorized
+
+3. **Try to login to admin service with non-admin user**:
+   ```bash
+   curl -X POST http://localhost:5001/admin/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"username_or_email": "regularuser", "password": "UserPass!123"}'
+   ```
+   Expected: 401 Unauthorized
+
+## 4. Common Testing Scenarios
+
+### A. Password Requirements
+
+Test password validation with various combinations:
+```bash
+# Too short
+curl -X POST http://localhost:5002/user/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "email": "test@example.com", "password": "short", "name": "Test User"}'
+
+# No uppercase
+curl -X POST http://localhost:5002/user/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "email": "test@example.com", "password": "lowercase123!", "name": "Test User"}'
+
+# No special character
+curl -X POST http://localhost:5002/user/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "email": "test@example.com", "password": "NoSpecial123", "name": "Test User"}'
+
+# Valid password
+curl -X POST http://localhost:5002/user/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username": "testuser", "email": "test@example.com", "password": "ValidPass123!", "name": "Test User"}'
+```
+
+### B. Token Expiration
+
+1. Wait for token to expire (1 hour)
+2. Try to access protected endpoint:
+```bash
+curl -X GET http://localhost:5001/admin/users \
+  -H "Authorization: Bearer <EXPIRED_TOKEN>"
+```
+Expected: 401 Unauthorized
+
+### C. Account Deactivation
+
+1. Deactivate a user:
+```bash
+curl -X PUT http://localhost:5001/admin/users/<USER_ID> \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
+  -d '{"is_active": false}'
+```
+
+2. Try to login with deactivated account:
+```bash
+curl -X POST http://localhost:5002/user/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username_or_email": "deactivateduser", "password": "UserPass!123"}'
+```
+Expected: 403 Forbidden
+
+## 5. Troubleshooting
+
+### Common Issues
+
+1. **401 Unauthorized**
+   - Check if the token is valid and not expired
+   - Verify the token is being sent in the correct format
+   - Ensure the user has the required role
+
+2. **403 Forbidden**
+   - Check if the account is active
+   - Verify the user has the correct role for the endpoint
+
+3. **404 Not Found**
+   - Verify the user ID exists
+   - Check if the endpoint URL is correct
+
+4. **500 Internal Server Error**
+   - Check server logs for detailed error messages
+   - Verify database connection
+   - Ensure all required environment variables are set
+
+### Debugging Tips
+
+1. Use verbose mode with curl to see detailed request/response:
+```bash
+curl -v -X POST http://localhost:5001/admin/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username_or_email": "superadmin", "password": "StrongPass!123"}'
+```
+
+2. Check server logs for detailed error messages:
+```bash
+tail -f logs/admin_service.log
+tail -f logs/user_service.log
+```
+
+3. Verify database connection:
+```bash
+psql $DATABASE_URL -c "\dt"
+```
+
+4. Test database queries directly:
+```bash
+psql $DATABASE_URL -c "SELECT * FROM users;"
+psql $DATABASE_URL -c "SELECT * FROM admins;"
+``` 
