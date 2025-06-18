@@ -3,12 +3,13 @@
   "info": {
     "title": "Admin Service API",
     "version": "1.0.0",
-    "description": "API documentation for the Admin Service"
+    "description": "API documentation for the Admin Service. Supports both dedicated admin accounts and users with admin role."
   },
   "paths": {
     "/admin/auth/login": {
       "post": {
         "summary": "Authenticate admin and get access token",
+        "description": "Supports both dedicated admin accounts and users with admin role. Users with admin role will be automatically logged out and required to log in again to get admin privileges.",
         "requestBody": {
           "required": true,
           "content": {
@@ -22,7 +23,7 @@
                 "properties": {
                   "username_or_email": {
                     "type": "string",
-                    "description": "Username or email of the admin"
+                    "description": "Username or email of the admin (can be from admins table or users table with admin role)"
                   },
                   "password": {
                     "type": "string",
@@ -43,7 +44,7 @@
                   "properties": {
                     "access_token": {
                       "type": "string",
-                      "description": "JWT access token"
+                      "description": "JWT access token with admin role"
                     },
                     "admin": {
                       "$ref": "#/components/schemas/Admin"
@@ -105,6 +106,7 @@
     "/admin/auth/verify": {
       "get": {
         "summary": "Verify JWT token",
+        "description": "Verifies admin token and returns admin details. Supports both dedicated admin accounts and users with admin role.",
         "security": [
           {
             "BearerAuth": []
@@ -326,6 +328,111 @@
                   "type": "object",
                   "properties": {
                     "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": ["User Management"]
+      },
+      "put": {
+        "summary": "Update user details",
+        "description": "Update user details including role. If role is changed to admin, the user will need to log in again to get admin privileges.",
+        "parameters": [
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID of the user to update"
+          }
+        ],
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "New username"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "New email address"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "New full name"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": ["user", "admin"],
+                    "description": "User role (changing to admin requires re-login)"
+                  },
+                  "is_active": {
+                    "type": "boolean",
+                    "description": "Account active status"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
                       "type": "string"
                     }
                   }
@@ -682,7 +789,7 @@
           },
           "role": {
             "type": "string",
-            "description": "User role (e.g., 'user')"
+            "description": "User role (e.g., 'user' or 'admin')"
           },
           "is_active": {
             "type": "boolean",
