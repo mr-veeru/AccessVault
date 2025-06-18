@@ -17,6 +17,7 @@ AccessVault is a robust, microservice-based solution designed for comprehensive 
 *   **Modern ReactJS Frontend:** A sleek and responsive user interface built with TypeScript and styled using Tailwind CSS.
 *   **Secure Password Handling:** Robust password policies including minimum length, uppercase, lowercase, digit, and special character requirements.
 *   **Dynamic Account Status:** Admins can easily activate or deactivate user accounts via the dashboard.
+*   **Flexible Role Management:** Users can be promoted to admin role with automatic session handling.
 
 ## 🚀 Getting Started
 
@@ -145,26 +146,26 @@ project/
 ## 🌐 API Endpoints
 
 Access the interactive Swagger UI for detailed API specifications:
-*   **Admin Service API Docs:** `http://localhost:5001/apidocs/`
-*   **User Service API Docs:** `http://localhost:5002/apidocs/`
+*   **Admin Service API Docs:** `http://localhost:5001/api/docs/`
+*   **User Service API Docs:** `http://localhost:5002/api/docs/`
 
 ### Admin Service (Port 5001)
 
 #### Authentication
-*   `POST /admin/auth/login` - Admin login
+*   `POST /admin/auth/login` - Admin login (supports both admin table and users with admin role)
 *   `GET /admin/auth/verify` - Verify admin token
+*   `PUT /admin/auth/change-password` - Change admin password
 
 #### User Management
 *   `GET /admin/users` - List all users
 *   `GET /admin/users/<user_id>` - Get user details
-*   `PUT /admin/users/<user_id>` - Update user details (includes status change)
+*   `PUT /admin/users/<user_id>` - Update user details (includes role change)
 *   `DELETE /admin/users/<user_id>` - Delete user
 
 #### System & Profile Management
 *   `GET /admin/settings` - Get system settings
 *   `PUT /admin/settings` - Update system settings
 *   `PUT /admin/profile` - Update admin's own profile (username, email, name)
-*   `PUT /admin/auth/change-password` - Change admin's own password
 
 ### User Service (Port 5002)
 
@@ -172,11 +173,11 @@ Access the interactive Swagger UI for detailed API specifications:
 *   `POST /user/auth/register` - Register new user
 *   `POST /user/auth/login` - User login
 *   `GET /user/auth/verify` - Verify user token
+*   `PUT /user/auth/change-password` - Change user password
 
 #### Profile Management
 *   `GET /user/profile` - Get user's own profile
 *   `PUT /user/profile` - Update user's own profile (username, email, name)
-*   `POST /user/profile/change-password` - Change user's own password
 *   `POST /user/profile/deactivate` - Deactivate user's own account
 
 ## 🔒 Security Highlights
@@ -185,6 +186,7 @@ Access the interactive Swagger UI for detailed API specifications:
 *   **JWT Token Management:** Tokens expire after 1 hour, enhancing security.
 *   **Role-Based Access Control:** Ensures users can only access resources permitted by their assigned roles (`admin` or `user`).
 *   **Secure Password Hashing:** Utilizes `werkzeug.security` for robust password storage.
+*   **Flexible Role Management:** Users can be promoted to admin role with automatic session handling and token refresh.
 
 ## 🙏 Contributing
 
