@@ -1,10 +1,5 @@
 # AccessVault: Secure User Management & Authentication System 🔐
 
-![AccessVault Banner](https://img.shields.io/badge/Status-Active-brightgreen)
-![Backend](https://img.shields.io/badge/Backend-Flask%20%7C%20PostgreSQL-blueviolet)
-![Frontend](https://img.shields.io/badge/Frontend-ReactJS%20%7C%20TypeScript%20%7C%20TailwindCSS-blue)
-![Auth](https://img.shields.io/badge/Authentication-JWT-orange)
-
 AccessVault is a robust, microservice-based solution designed for comprehensive user management and authentication. Built with a powerful Flask backend (featuring distinct admin and user services) and a modern ReactJS frontend, it offers secure, scalable, and intuitive control over user data.
 
 ## ✨ Key Features
@@ -12,12 +7,12 @@ AccessVault is a robust, microservice-based solution designed for comprehensive 
 *   **Microservice Architecture:** Separate Flask services for `Admin` and `User` operations, ensuring scalability and maintainability.
 *   **Role-Based Access Control (RBAC):** Granular permissions for `admin` and `user` roles to secure functionality.
 *   **JWT-Based Authentication:** Industry-standard JSON Web Tokens for secure and stateless API authentication.
-*   **PostgreSQL Database:** Reliable and high-performance data storage, integrated seamlessly with Supabase.
-*   **Comprehensive API Documentation:** Interactive Swagger UI for both Admin and User services, making API exploration a breeze.
+*   **PostgreSQL Database:** A reliable and high-performance data storage solution, integrated seamlessly with Supabase.
+*   **Comprehensive API Documentation:** An interactive Swagger UI is available for both Admin and User services, making API exploration effortless.
 *   **Modern ReactJS Frontend:** A sleek and responsive user interface built with TypeScript and styled using Tailwind CSS.
 *   **Secure Password Handling:** Robust password policies including minimum length, uppercase, lowercase, digit, and special character requirements.
 *   **Dynamic Account Status:** Admins can easily activate or deactivate user accounts via the dashboard.
-*   **Flexible Role Management:** Users can be promoted to admin role with automatic session handling.
+*   **Flexible Role Management:** Users can be promoted to the admin role with automatic session handling.
 
 ## 🚀 Getting Started
 
@@ -91,7 +86,7 @@ pip install -r backend/requirements.txt
    ```bash
    npm start
     # or yarn start
-    ```
+   ```
     This will typically open the application in your web browser at `http://localhost:3000`.
 
 ## 📂 Project Structure
@@ -152,7 +147,7 @@ Access the interactive Swagger UI for detailed API specifications:
 ### Admin Service (Port 5001)
 
 #### Authentication
-*   `POST /admin/auth/login` - Admin login (supports both admin table and users with admin role)
+*   `POST /admin/auth/login` - Admin login (supports both the admin table and users with admin role)
 *   `GET /admin/auth/verify` - Verify admin token
 *   `PUT /admin/auth/change-password` - Change admin password
 
@@ -170,15 +165,15 @@ Access the interactive Swagger UI for detailed API specifications:
 ### User Service (Port 5002)
 
 #### Authentication
-*   `POST /user/auth/register` - Register new user
+*   `POST /user/auth/register` - Register a new user
 *   `POST /user/auth/login` - User login
 *   `GET /user/auth/verify` - Verify user token
 *   `PUT /user/auth/change-password` - Change user password
 
 #### Profile Management
-*   `GET /user/profile` - Get user's own profile
+*   `GET /user/profile` - Get the user's own profile
 *   `PUT /user/profile` - Update user's own profile (username, email, name)
-*   `POST /user/profile/deactivate` - Deactivate user's own account
+*   `POST /user/profile/deactivate` - Deactivate the user's own account
 
 ## 🔒 Security Highlights
 
@@ -186,7 +181,7 @@ Access the interactive Swagger UI for detailed API specifications:
 *   **JWT Token Management:** Tokens expire after 1 hour, enhancing security.
 *   **Role-Based Access Control:** Ensures users can only access resources permitted by their assigned roles (`admin` or `user`).
 *   **Secure Password Hashing:** Utilizes `werkzeug.security` for robust password storage.
-*   **Flexible Role Management:** Users can be promoted to admin role with automatic session handling and token refresh.
+*   **Flexible Role Management:** Users can be promoted to the admin role with automatic session handling and token refresh.
 
 ## 🙏 Contributing
 
