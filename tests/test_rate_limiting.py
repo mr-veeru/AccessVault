@@ -41,8 +41,8 @@ def test_authentication_rate_limiting():
     print("🔐 Testing Authentication Rate Limiting")
     print("=" * 50)
     
-    # Test user login rate limiting
-    print("\n1. Testing User Login Rate Limiting (5 per minute, 50 per hour)")
+    # Test account login rate limiting
+    print("\n1. Testing Account Login Rate Limiting (5 per minute, 50 per hour)")
     print("-" * 60)
     
     login_data = {
@@ -127,7 +127,7 @@ def main():
     print("This script tests the rate limiting and log rotation features.")
     print("Make sure both services are running:")
     print("- Admin Service: http://localhost:5001")
-    print("- User Service: http://localhost:5002")
+    print("- Account Service: http://localhost:5002")
     print()
     
     # Test authentication rate limiting
@@ -144,7 +144,7 @@ def main():
     print("\n💡 Tips:")
     print("- Rate limits are per IP address")
     print("- Different endpoints have different limits")
-    print("- Admin users have higher limits than regular users")
+    print("- Admin accounts have higher limits than regular accounts")
     print("- All rate limit violations are logged")
 
 if __name__ == "__main__":

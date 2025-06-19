@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime
-from shared.models import User
+from shared.models import Account
 from shared.db import db
 from shared.utils.validators import validate_password
 from shared.logger import setup_logging
@@ -26,9 +26,9 @@ def login():
         return jsonify({'error': 'Missing username/email'}), 400
 
     # Find user by username or email
-    user = User.query.filter_by(username=login_identifier).first()
+    user = Account.query.filter_by(username=login_identifier).first()
     if not user:
-        user = User.query.filter_by(email=login_identifier).first()
+        user = Account.query.filter_by(email=login_identifier).first()
     
     # Check if user exists, has admin role, and password is correct
     if not user or not user.is_admin() or not user.check_password(data['password']):
@@ -58,7 +58,7 @@ def login():
 @jwt_required()
 def verify_token():
     admin_id = get_jwt_identity()
-    user = User.query.get(admin_id)
+    user = Account.query.get(admin_id)
     
     if not user or not user.is_admin():
         admin_auth_logger.warning(f"Admin token verification failed: Admin {admin_id} not found or not admin.")
@@ -75,7 +75,7 @@ def verify_token():
 @password_change_rate_limit
 def change_password():
     current_admin_id = get_jwt_identity()
-    user = User.query.get(current_admin_id)
+    user = Account.query.get(current_admin_id)
 
     if not user or not user.is_admin():
         admin_auth_logger.warning(f"Admin password change failed: Admin {current_admin_id} not found or not admin.")

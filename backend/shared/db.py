@@ -7,8 +7,8 @@ def init_db(app):
     db.init_app(app)
     
     with app.app_context():
-        # Import the single User model
-        from shared.models import User
+        # Import the single Account model
+        from shared.models import Account
         
         # Create all tables
         db.create_all() 

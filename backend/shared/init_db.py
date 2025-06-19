@@ -12,7 +12,7 @@ load_dotenv(os.path.join(project_root, '.env'))
 
 from shared.db import db, init_db
 from shared.config import Config
-from shared.models import User
+from shared.models import Account
 from flask import Flask
 
 def create_admin(username, email, password, name):
@@ -24,12 +24,12 @@ def create_admin(username, email, password, name):
         init_db(app)
         
         # Check if admin already exists
-        if User.query.filter_by(username=username).first():
+        if Account.query.filter_by(username=username).first():
             print(f"Admin user '{username}' already exists.")
             return
         
         # Create admin user
-        admin = User(
+        admin = Account(
             username=username,
             email=email,
             name=name,

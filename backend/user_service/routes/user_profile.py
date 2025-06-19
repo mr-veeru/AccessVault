@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from shared.models import User
+from shared.models import Account
 from shared.db import db
 from shared.utils.validators import validate_email, validate_username
 from shared.logger import setup_logging
@@ -14,7 +14,7 @@ user_profile_logger = setup_logging(__name__)
 @profile_rate_limit
 def get_profile():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = Account.query.get(current_user_id)
     
     if not user:
         user_profile_logger.warning(f"User profile fetch failed: User {current_user_id} not found.")
@@ -30,7 +30,7 @@ def get_profile():
 @profile_rate_limit
 def update_profile():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = Account.query.get(current_user_id)
     
     if not user:
         user_profile_logger.warning(f"User profile update failed: User {current_user_id} not found.")
@@ -44,7 +44,7 @@ def update_profile():
         if not validate_email(email):
             user_profile_logger.warning(f"User {current_user_id} profile update failed: Invalid email format provided for {email}.")
             return jsonify({'error': 'Invalid email format'}), 400
-        if User.query.filter(User.id != current_user_id, User.email == email).first():
+        if Account.query.filter(Account.id != current_user_id, Account.email == email).first():
             user_profile_logger.warning(f"User {current_user_id} profile update failed: Email '{email}' already exists.")
             return jsonify({'error': 'Email already exists'}), 400
         user.email = email
@@ -59,7 +59,7 @@ def update_profile():
         if not validate_username(username):
             user_profile_logger.warning(f"User {current_user_id} profile update failed: Invalid username format provided for {username}.")
             return jsonify({'error': 'Username can only contain lowercase letters, numbers, and underscores'}), 400
-        if User.query.filter(User.id != current_user_id, User.username == username).first():
+        if Account.query.filter(Account.id != current_user_id, Account.username == username).first():
             user_profile_logger.warning(f"User {current_user_id} profile update failed: Username '{username}' already exists.")
             return jsonify({'error': 'Username already exists'}), 400
         user.username = username
@@ -77,7 +77,7 @@ def update_profile():
 @jwt_required()
 def change_password():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = Account.query.get(current_user_id)
     
     if not user:
         user_profile_logger.warning(f"Password change failed: User {current_user_id} not found.")
@@ -106,7 +106,7 @@ def change_password():
 @profile_rate_limit
 def delete_account():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = Account.query.get(current_user_id)
 
     if not user:
         user_profile_logger.warning(f"User account deletion failed: User {current_user_id} not found.")
@@ -126,7 +126,7 @@ def delete_account():
 @profile_rate_limit
 def deactivate_account():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = Account.query.get(current_user_id)
 
     if not user:
         user_profile_logger.warning(f"User account deactivation failed: User {current_user_id} not found.")

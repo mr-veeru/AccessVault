@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from shared.models import User
+from shared.models import Account
 from shared.db import db
 from shared.utils.auth_utils import admin_required
 from shared.utils.validators import validate_email, validate_password, validate_username
@@ -14,7 +14,7 @@ user_management_logger = setup_logging(__name__)
 @admin_required
 def get_users():
     # Only return regular users, not admins
-    users = User.query.filter_by(role='user').all()
+    users = Account.query.filter_by(role='user').all()
     user_management_logger.info("Admin fetched all regular users.")
     return jsonify([user.to_dict() for user in users]), 200
 
@@ -51,15 +51,15 @@ def create_user():
         user_management_logger.warning(f"User creation failed for {username} ({email}): {password_validation_result}")
         return jsonify({'error': password_validation_result}), 400
 
-    if User.query.filter_by(username=username).first():
+    if Account.query.filter_by(username=username).first():
         user_management_logger.warning(f"User creation failed: Username '{username}' already exists.")
         return jsonify({'error': 'Username already exists'}), 400
 
-    if User.query.filter_by(email=email).first():
+    if Account.query.filter_by(email=email).first():
         user_management_logger.warning(f"User creation failed: Email '{email}' already exists.")
         return jsonify({'error': 'Email already exists'}), 400
 
-    user = User(
+    user = Account(
         username=username,
         email=email,
         name=name,
@@ -81,7 +81,7 @@ def create_user():
 @jwt_required()
 @admin_required
 def change_user_role(user_id):
-    user = User.query.get_or_404(user_id)
+    user = Account.query.get_or_404(user_id)
     data = request.get_json()
     current_admin_id = get_jwt_identity()
 
@@ -111,7 +111,7 @@ def change_user_role(user_id):
 @jwt_required()
 @admin_required
 def update_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = Account.query.get_or_404(user_id)
     data = request.get_json()
 
     current_admin_id = get_jwt_identity()
@@ -134,7 +134,7 @@ def update_user(user_id):
         if not validate_username(new_username):
             user_management_logger.warning(f"Admin {current_admin_id} failed to update user {user_id}: Invalid username format for {new_username}.")
             return jsonify({'error': 'Username can only contain lowercase letters, numbers, and underscores'}), 400
-        if User.query.filter(User.id != user_id, User.username == new_username).first():
+        if Account.query.filter(Account.id != user_id, Account.username == new_username).first():
             user_management_logger.warning(f"Admin {current_admin_id} failed to update user {user_id}: Username '{new_username}' already exists.")
             return jsonify({'error': 'Username already exists'}), 400
         user.username = new_username
@@ -149,7 +149,7 @@ def update_user(user_id):
         if not validate_email(new_email):
             user_management_logger.warning(f"Admin {current_admin_id} failed to update user {user_id}: Invalid email format for {new_email}.")
             return jsonify({'error': 'Invalid email format'}), 400
-        if User.query.filter(User.id != user_id, User.email == new_email).first():
+        if Account.query.filter(Account.id != user_id, Account.email == new_email).first():
             user_management_logger.warning(f"Admin {current_admin_id} failed to update user {user_id}: Email '{new_email}' already exists.")
             return jsonify({'error': 'Email already exists'}), 400
         user.email = new_email
@@ -169,7 +169,7 @@ def update_user(user_id):
 @jwt_required()
 @admin_required
 def delete_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = Account.query.get_or_404(user_id)
     
     # Prevent admin from deleting themselves
     current_admin_id = get_jwt_identity()
@@ -188,7 +188,7 @@ def delete_user(user_id):
 @jwt_required()
 @admin_required
 def activate_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = Account.query.get_or_404(user_id)
     current_admin_id = get_jwt_identity()
     
     # Prevent admin from activating themselves
@@ -205,7 +205,7 @@ def activate_user(user_id):
 @jwt_required()
 @admin_required
 def deactivate_user(user_id):
-    user = User.query.get_or_404(user_id)
+    user = Account.query.get_or_404(user_id)
     current_admin_id = get_jwt_identity()
     
     # Prevent admin from deactivating themselves

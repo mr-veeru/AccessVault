@@ -47,7 +47,7 @@
                       "description": "JWT access token with admin role"
                     },
                     "admin": {
-                      "$ref": "#/components/schemas/Admin"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -125,7 +125,7 @@
                       "example": "Token is valid"
                     },
                     "admin": {
-                      "$ref": "#/components/schemas/Admin"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -280,7 +280,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/User"
+                    "$ref": "#/components/schemas/Account"
                   }
                 }
               }
@@ -343,7 +343,7 @@
                       "type": "string"
                     },
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -394,7 +394,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/User"
+                  "$ref": "#/components/schemas/Account"
                 }
               }
             }
@@ -482,7 +482,7 @@
                       "type": "string"
                     },
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -554,7 +554,7 @@
                       "type": "string"
                     },
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -611,7 +611,7 @@
                       "type": "string"
                     },
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -750,7 +750,7 @@
                       "type": "string"
                     },
                     "admin": {
-                      "$ref": "#/components/schemas/Admin"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -801,12 +801,12 @@
       }
     },
     "schemas": {
-      "Admin": {
+      "Account": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
-            "description": "Admin ID"
+            "description": "Account ID"
           },
           "username": {
             "type": "string",
@@ -823,47 +823,7 @@
           },
           "role": {
             "type": "string",
-            "description": "Admin role (e.g., 'admin')"
-          },
-          "is_active": {
-            "type": "boolean",
-            "description": "Account active status"
-          },
-          "created_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Account creation timestamp"
-          },
-          "last_login": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Last login timestamp"
-          }
-        }
-      },
-      "User": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "description": "User ID"
-          },
-          "username": {
-            "type": "string",
-            "description": "Username"
-          },
-          "email": {
-            "type": "string",
-            "format": "email",
-            "description": "Email address"
-          },
-          "name": {
-            "type": "string",
-            "description": "Full name"
-          },
-          "role": {
-            "type": "string",
-            "description": "User role (e.g., 'user' or 'admin')"
+            "description": "Account role (e.g., 'user' or 'admin')"
           },
           "is_active": {
             "type": "boolean",

@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime
-from shared.models import User
+from shared.models import Account
 from shared.db import db
 from shared.utils.validators import validate_email, validate_password, validate_username
 from shared.logger import setup_logging
@@ -43,16 +43,16 @@ def register():
         return jsonify({'error': password_validation_result}), 400
     
     # Check if user already exists
-    if User.query.filter_by(username=username).first():
+    if Account.query.filter_by(username=username).first():
         user_auth_logger.warning(f"User registration failed: Username '{username}' already exists.")
         return jsonify({'error': 'Username already exists'}), 400
     
-    if User.query.filter_by(email=email).first():
+    if Account.query.filter_by(email=email).first():
         user_auth_logger.warning(f"User registration failed: Email '{email}' already exists.")
         return jsonify({'error': 'Email already exists'}), 400
     
     # Create new user
-    user = User(
+    user = Account(
         username=username,
         email=email,
         name=data['name']
@@ -84,9 +84,9 @@ def login():
         return jsonify({'error': 'Missing username/email'}), 400
 
     # Try to find user by username or email
-    user = User.query.filter_by(username=login_identifier).first()
+    user = Account.query.filter_by(username=login_identifier).first()
     if not user:
-        user = User.query.filter_by(email=login_identifier).first()
+        user = Account.query.filter_by(email=login_identifier).first()
     
     if not user or not user.check_password(data['password']):
         user_auth_logger.warning(f"User login failed for '{login_identifier}': Invalid credentials.")
@@ -115,7 +115,7 @@ def login():
 @jwt_required()
 def verify_token():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = Account.query.get(current_user_id)
     
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -130,7 +130,7 @@ def verify_token():
 @password_change_rate_limit
 def change_password():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = Account.query.get(current_user_id)
 
     if not user:
         return jsonify({'error': 'User not found'}), 404
@@ -159,7 +159,7 @@ def change_password():
 @jwt_required()
 def deactivate_account():
     current_user_id = get_jwt_identity()
-    user = User.query.get(current_user_id)
+    user = Account.query.get(current_user_id)
 
     if not user:
         return jsonify({'error': 'User not found'}), 404

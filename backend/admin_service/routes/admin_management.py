@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from shared.db import db
-from shared.models import User
+from shared.models import Account
 from shared.utils.auth_utils import admin_required
 from shared.utils.validators import validate_username, validate_email
 from shared.logger import setup_logging
@@ -13,7 +13,7 @@ admin_management_logger = setup_logging(__name__)
 @jwt_required()
 @admin_required
 def get_user(user_id):
-    user = User.query.get(user_id)
+    user = Account.query.get(user_id)
     if not user:
         admin_management_logger.warning(f"Failed to fetch user {user_id}: User not found.")
         return jsonify({'error': 'User not found'}), 404
@@ -47,7 +47,7 @@ def update_system_settings():
 @admin_required
 def update_admin_profile():
     current_admin_id = get_jwt_identity()
-    user = User.query.get(current_admin_id)
+    user = Account.query.get(current_admin_id)
 
     if not user or not user.is_admin():
         admin_management_logger.warning(f"Admin profile update failed: Admin {current_admin_id} not found or not admin.")
@@ -64,7 +64,7 @@ def update_admin_profile():
         if not validate_username(username):
             admin_management_logger.warning(f"Admin {current_admin_id} profile update failed: Invalid username format provided for {username}.")
             return jsonify({'error': 'Username can only contain lowercase letters, numbers, and underscores'}), 400
-        if User.query.filter(User.id != current_admin_id, User.username == username).first():
+        if Account.query.filter(Account.id != current_admin_id, Account.username == username).first():
             admin_management_logger.warning(f"Admin {current_admin_id} profile update failed: Username '{username}' already exists.")
             return jsonify({'error': 'Username already exists'}), 400
         user.username = username
@@ -74,7 +74,7 @@ def update_admin_profile():
         if not validate_email(email):
             admin_management_logger.warning(f"Admin {current_admin_id} profile update failed: Invalid email format provided for {email}.")
             return jsonify({'error': 'Invalid email format'}), 400
-        if User.query.filter(User.id != current_admin_id, User.email == email).first():
+        if Account.query.filter(Account.id != current_admin_id, Account.email == email).first():
             admin_management_logger.warning(f"Admin {current_admin_id} profile update failed: Email '{email}' already exists.")
             return jsonify({'error': 'Email already exists'}), 400
         user.email = email

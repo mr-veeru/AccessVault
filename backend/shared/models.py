@@ -2,7 +2,7 @@ from shared.db import db
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 
-class User(db.Model):
+class Account(db.Model):
     __tablename__ = 'accounts'
     
     id = db.Column(db.Integer, primary_key=True)

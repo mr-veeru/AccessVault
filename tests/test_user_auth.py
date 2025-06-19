@@ -10,7 +10,7 @@ def test_register():
         "email": "testuser1@example.com",
         "password": "TestPass!123",
         "confirmPassword": "TestPass!123",
-        "name": "Test User 1"
+        "name": "Test Account 1"
     }
     resp = requests.post(f"{BASE_URL}/user/auth/register", json=data)
     print("Register status:", resp.status_code)
@@ -21,7 +21,7 @@ def test_register():
     if resp.status_code == 201:
         print("Registration successful.")
     elif resp.status_code == 400:
-        print("User already exists or bad request.")
+        print("Account already exists or bad request.")
     elif resp.status_code == 500:
         print("Server error. Check database connection and backend logs.")
     else:

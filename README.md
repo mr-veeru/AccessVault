@@ -98,20 +98,31 @@ project/
 ├── backend/                              # Flask microservices
 │   ├── admin_service/                    # Admin-specific logic & API
 │   │   ├── app.py                        # Admin service Flask app
-│   │   └── routes/                       # Admin API endpoints (auth, management)
+│   │   ├── routes/                       # Admin API endpoints (auth, management)
+│   │   │   ├── admin_auth.py             # Admin authentication endpoints
+│   │   │   ├── admin_management.py       # Admin profile/settings endpoints
+│   │   │   └── user_management.py        # Endpoints for managing user accounts
+│   │   └── static/
+│   │       └── swagger.json              # OpenAPI/Swagger documentation for admin service
 │   │
 │   ├── user_service/                     # User-specific logic & API
 │   │   ├── app.py                        # User service Flask app
-│   │   └── routes/                       # User API endpoints (auth, profile)
+│   │   ├── routes/                       # User API endpoints (auth, profile)
+│   │   │   ├── user_auth.py              # User authentication endpoints
+│   │   │   └── user_profile.py           # User profile management endpoints
+│   │   └── static/
+│   │       └── swagger.json              # OpenAPI/Swagger documentation for user service
 │   │
 │   ├── shared/                           # Shared utilities, DB config, validators
 │   │   ├── config.py                     # Centralized application configuration
 │   │   ├── db.py                         # Database initialization and SQLAlchemy instance
-│   │   ├── models.py                     # Single User model for all users/admins
+│   │   ├── models.py                     # Single Account model for all users/admins
 │   │   ├── init_db.py                    # Script to initialize database and create first admin
+│   │   ├── logger.py                     # Logging setup and log rotation
 │   │   └── utils/                        # Common utility functions
 │   │       ├── auth_utils.py             # Authentication helper decorators
-│   │       └── validators.py             # Input validation functions
+│   │       ├── validators.py             # Input validation functions
+│   │       └── rate_limiter.py           # API rate limiting logic
 │   │
 │   ├── .env                              # Backend environment variables
 │   └── requirements.txt                  # Python dependencies
@@ -129,58 +140,25 @@ project/
 │   ├── package.json                      # Frontend dependencies & scripts
 │   ├── tailwind.config.js                # Tailwind CSS configuration
 │   ├── postcss.config.js                 # PostCSS configuration
-│   ├── .env.development                  # Frontend environment variables (optional, for specific environments)
 │   └── ... (other React project files)
 │
 ├── tests/                                # Automated test scripts (backend & frontend)
-│   ├── test_user_auth.py                 # User registration/login test
+│   ├── test_user_auth.py                 # Account registration/login test
 │   ├── test_rate_limiting.py             # Backend rate limiting/log rotation test
 │   └── test_frontend_rate_limit.js       # Frontend rate limit test
 │
 ├── README.md                             # Project overview and setup guide
 ├── TESTING_GUIDE.md                      # Guide for running tests and manual testing steps
 ├── .gitignore                            # Git ignore configurations
-└── package-lock.json                     # Node.js dependency lock file
 ```
 
-## 🌐 API Endpoints
+## 🛠️ Backend Utilities & Documentation
 
-Access the interactive Swagger UI for detailed API specifications:
-*   **Admin Service API Docs:** `http://localhost:5001/api/docs/`
-*   **User Service API Docs:** `http://localhost:5002/api/docs/`
-
-### Admin Service (Port 5001)
-
-#### Authentication
-*   `POST /admin/auth/login` - Admin login (supports users with admin role)
-*   `GET /admin/auth/verify` - Verify admin token
-*   `PUT /admin/auth/change-password` - Change admin password
-
-#### User Management
-*   `GET /admin/users` - List all users
-*   `GET /admin/users/<user_id>` - Get user details
-*   `PUT /admin/users/<user_id>` - Update user details (includes role change)
-*   `DELETE /admin/users/<user_id>` - Delete user
-*   `POST /admin/users/<user_id>/activate` - Activate user account
-*   `POST /admin/users/<user_id>/deactivate` - Deactivate user account
-
-#### System & Profile Management
-*   `GET /admin/settings` - Get system settings
-*   `PUT /admin/settings` - Update system settings
-*   `PUT /admin/profile` - Update admin's own profile (username, email, name)
-
-### User Service (Port 5002)
-
-#### Authentication
-*   `POST /user/auth/register` - Register a new user
-*   `POST /user/auth/login` - User login
-*   `GET /user/auth/verify` - Verify user token
-*   `PUT /user/auth/change-password` - Change user password
-
-#### Profile Management
-*   `GET /user/profile` - Get the user's own profile
-*   `PUT /user/profile` - Update user's own profile (username, email, name)
-*   `POST /user/profile/deactivate` - Deactivate the user's own account
+- **logger.py**: Centralized logging setup for all backend services. Handles log formatting, file output, and aggressive log rotation (size and age-based). All security events and errors are logged for monitoring and analysis.
+- **rate_limiter.py**: Implements API rate limiting for both user and admin services. Protects against brute force, DDoS, and API abuse with configurable limits per endpoint and user type.
+- **Swagger/OpenAPI Docs**: Each service exposes interactive API documentation:
+  - **Admin Service:** `backend/admin_service/static/swagger.json` (view at `http://localhost:5001/api/docs/`)
+  - **User Service:** `backend/user_service/static/swagger.json` (view at `http://localhost:5002/api/docs/`)
 
 ## 🔒 Security Highlights
 
@@ -189,17 +167,15 @@ Access the interactive Swagger UI for detailed API specifications:
 *   **Role-Based Access Control:** Ensures users can only access resources permitted by their assigned roles (`admin` or `user`).
 *   **Secure Password Hashing:** Utilizes `werkzeug.security` for robust password storage.
 *   **Flexible Role Management:** Users can be promoted to the admin role with automatic session handling and token refresh.
-*   **🛡️ Rate Limiting:** Comprehensive API rate limiting protects against brute force attacks, DDoS, and API abuse with different limits for different endpoints and user types.
-*   **🔄 Aggressive Log Rotation:** Size-based log rotation with automatic cleanup prevents disk space issues and reduces exposure of sensitive information in old logs.
+*   **🛡️ Rate Limiting:** Comprehensive API rate limiting protects against brute force attacks, DDoS, and API abuse with different limits for different endpoints and user types. See `backend/shared/utils/rate_limiter.py` for details.
+*   **🔄 Aggressive Log Rotation:** Size-based log rotation with automatic cleanup prevents disk space issues and reduces exposure of sensitive information in old logs. See `backend/shared/logger.py` for details.
 *   **Security Monitoring:** All security events (rate limit violations, authentication attempts, etc.) are logged for monitoring and analysis.
-
-📖 **For detailed information about security features, see [SECURITY_FEATURES.md](SECURITY_FEATURES.md)**
 
 ## 🧪 Running Tests
 
 All automated test scripts are located in the `tests/` directory.
 
-- **User registration/login test:**
+- **Account registration/login test:**
   ```bash
   python tests/test_user_auth.py
   ```
@@ -212,12 +188,4 @@ All automated test scripts are located in the `tests/` directory.
   node tests/test_frontend_rate_limit.js
   ```
 
-See `TESTING_GUIDE.md` for more advanced/manual API testing instructions.
-
-## 🙏 Contributing
-
-Contributions are welcome! If you have suggestions or find issues, please open an issue or submit a pull request.
-
----
-
-**Developed with ❤️ by Veeru**
+See [`TESTING_GUIDE.md`](TESTING_GUIDE.md) for detailed API and manual testing instructions, including sample curl commands and troubleshooting tips.

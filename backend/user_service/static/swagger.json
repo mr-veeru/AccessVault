@@ -62,7 +62,7 @@
                       "example": "User registered successfully"
                     },
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -128,7 +128,7 @@
                       "description": "JWT access token"
                     },
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -205,7 +205,7 @@
                       "example": "Token is valid"
                     },
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -361,7 +361,7 @@
                   "type": "object",
                   "properties": {
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -431,7 +431,7 @@
                       "example": "Profile updated successfully"
                     },
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -591,7 +591,7 @@
                       "example": "Account deactivated successfully"
                     },
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/Account"
                     }
                   }
                 }
@@ -627,12 +627,12 @@
       }
     },
     "schemas": {
-      "User": {
+      "Account": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
-            "description": "User ID"
+            "description": "Account ID"
           },
           "username": {
             "type": "string",
@@ -649,7 +649,7 @@
           },
           "role": {
             "type": "string",
-            "description": "User role (e.g., 'user' or 'admin')"
+            "description": "Account role (e.g., 'user' or 'admin')"
           },
           "is_active": {
             "type": "boolean",
