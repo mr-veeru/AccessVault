@@ -7,7 +7,7 @@ AccessVault is a robust, microservice-based solution designed for comprehensive 
 *   **Microservice Architecture:** Separate Flask services for `Admin` and `User` operations, ensuring scalability and maintainability.
 *   **Role-Based Access Control (RBAC):** Granular permissions for `admin` and `user` roles to secure functionality.
 *   **JWT-Based Authentication:** Industry-standard JSON Web Tokens for secure and stateless API authentication.
-*   **PostgreSQL Database:** A reliable and high-performance data storage solution, integrated seamlessly with Supabase.
+*   **PostgreSQL Database:** A reliable and high-performance data storage solution with optimized single-table design.
 *   **Comprehensive API Documentation:** An interactive Swagger UI is available for both Admin and User services, making API exploration effortless.
 *   **Modern ReactJS Frontend:** A sleek and responsive user interface built with TypeScript and styled using Tailwind CSS.
 *   **Secure Password Handling:** Robust password policies including minimum length, uppercase, lowercase, digit, and special character requirements.
@@ -97,17 +97,16 @@ project/
 ├── backend/                              # Flask microservices
 │   ├── admin_service/                    # Admin-specific logic & API
 │   │   ├── app.py                        # Admin service Flask app
-│   │   ├── models.py                     # Admin database models
 │   │   └── routes/                       # Admin API endpoints (auth, management)
 │   │
 │   ├── user_service/                     # User-specific logic & API
 │   │   ├── app.py                        # User service Flask app
-│   │   ├── models.py                     # User database models
 │   │   └── routes/                       # User API endpoints (auth, profile)
 │   │
 │   ├── shared/                           # Shared utilities, DB config, validators
 │   │   ├── config.py                     # Centralized application configuration
 │   │   ├── db.py                         # Database initialization and SQLAlchemy instance
+│   │   ├── models.py                     # Single User model for all users/admins
 │   │   ├── init_db.py                    # Script to initialize database and create first admin
 │   │   └── utils/                        # Common utility functions
 │   │       ├── auth_utils.py             # Authentication helper decorators
@@ -147,7 +146,7 @@ Access the interactive Swagger UI for detailed API specifications:
 ### Admin Service (Port 5001)
 
 #### Authentication
-*   `POST /admin/auth/login` - Admin login (supports both the admin table and users with admin role)
+*   `POST /admin/auth/login` - Admin login (supports users with admin role)
 *   `GET /admin/auth/verify` - Verify admin token
 *   `PUT /admin/auth/change-password` - Change admin password
 
@@ -156,6 +155,8 @@ Access the interactive Swagger UI for detailed API specifications:
 *   `GET /admin/users/<user_id>` - Get user details
 *   `PUT /admin/users/<user_id>` - Update user details (includes role change)
 *   `DELETE /admin/users/<user_id>` - Delete user
+*   `POST /admin/users/<user_id>/activate` - Activate user account
+*   `POST /admin/users/<user_id>/deactivate` - Deactivate user account
 
 #### System & Profile Management
 *   `GET /admin/settings` - Get system settings
@@ -182,6 +183,11 @@ Access the interactive Swagger UI for detailed API specifications:
 *   **Role-Based Access Control:** Ensures users can only access resources permitted by their assigned roles (`admin` or `user`).
 *   **Secure Password Hashing:** Utilizes `werkzeug.security` for robust password storage.
 *   **Flexible Role Management:** Users can be promoted to the admin role with automatic session handling and token refresh.
+*   **🛡️ Rate Limiting:** Comprehensive API rate limiting protects against brute force attacks, DDoS, and API abuse with different limits for different endpoints and user types.
+*   **🔄 Aggressive Log Rotation:** Size-based log rotation with automatic cleanup prevents disk space issues and reduces exposure of sensitive information in old logs.
+*   **Security Monitoring:** All security events (rate limit violations, authentication attempts, etc.) are logged for monitoring and analysis.
+
+📖 **For detailed information about security features, see [SECURITY_FEATURES.md](SECURITY_FEATURES.md)**
 
 ## 🙏 Contributing
 

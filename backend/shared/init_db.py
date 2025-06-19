@@ -12,7 +12,7 @@ load_dotenv(os.path.join(project_root, '.env'))
 
 from shared.db import db, init_db
 from shared.config import Config
-from admin_service.models import Admin
+from shared.models import User
 from flask import Flask
 
 def create_admin(username, email, password, name):
@@ -24,12 +24,12 @@ def create_admin(username, email, password, name):
         init_db(app)
         
         # Check if admin already exists
-        if Admin.query.filter_by(username=username).first():
+        if User.query.filter_by(username=username).first():
             print(f"Admin user '{username}' already exists.")
             return
         
         # Create admin user
-        admin = Admin(
+        admin = User(
             username=username,
             email=email,
             name=name,
@@ -41,10 +41,14 @@ def create_admin(username, email, password, name):
         db.session.commit()
         
         print(f"Admin user '{username}' created successfully.")
+        print(f"   Email: {email}")
+        print(f"   Name: {name}")
+        print(f"   Role: admin")
 
 if __name__ == '__main__':
     if len(sys.argv) != 5:
         print("Usage: python init_db.py <username> <email> <password> <name>")
+        print("Example: python init_db.py admin admin@example.com StrongPass!123 Admin User")
         sys.exit(1)
     
     username = sys.argv[1]

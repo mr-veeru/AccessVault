@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { LoginCredentials, RegisterData } from '../types';
 import { useNotification } from '../context/NotificationContext';
 import { isValidEmail, isValidUsername, validatePassword } from '../utils/validation';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 
 interface AuthFormProps {
   type: 'login' | 'register';
@@ -13,6 +14,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isAdmin = false }) 
   const [formData, setFormData] = useState<Partial<RegisterData>>({});
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const { showNotification } = useNotification();
 
@@ -42,6 +44,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isAdmin = false }) 
           const passwordValidationResult = validatePassword(value);
           if (passwordValidationResult !== true) error = passwordValidationResult;
         }
+      } else if (name === 'confirmPassword') {
+        if (!value) error = 'Please confirm your password.';
+        else if (value !== formData.password) error = 'Passwords do not match.';
       } else if (name === 'name' && !value) {
         error = 'Name is required.';
       }
@@ -66,13 +71,18 @@ const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isAdmin = false }) 
     let isValid = true;
 
     if (type === 'register') {
-      const fields: Array<keyof RegisterData> = ['username', 'email', 'password', 'name'];
+      const fields: Array<keyof RegisterData> = ['username', 'email', 'password', 'name', 'confirmPassword'];
       for (const field of fields) {
         const error = validateField(field, formData[field] || '');
         if (error) {
           newErrors[field] = error;
           isValid = false;
         }
+      }
+      // Extra check for password match
+      if (formData.password !== formData.confirmPassword) {
+        newErrors.confirmPassword = 'Passwords do not match.';
+        isValid = false;
       }
     } else { // type === 'login'
       // Explicitly validate login fields, which are handled as 'email' and 'password' in formData
@@ -197,20 +207,35 @@ const AuthForm: React.FC<AuthFormProps> = ({ type, onSubmit, isAdmin = false }) 
               onClick={togglePasswordVisibility}
               className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-secondary-400 hover:text-secondary-600 transition-colors duration-200"
             >
-              {showPassword ? (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.25L11.75 16.125M6.25 10.625l-.125.125M4.75 6.25L3.625 5.125M17.125 17.125l1.125 1.125M18.875 14.125l1.125 1.125M21.25 11.25L22.375 10.125M11.75 5.125L13.875 7.25M19.75 6.25L20.875 5.125M10.125 3.625L11.25 2.5M10.625 6.25L10.75 6.375M16.125 11.75L18.25 13.875M14.125 18.875L15.25 20M5.125 19.75L6.25 20.875M2.5 11.25L3.625 10.125M11.25 2.5L10.125 3.625M18.875 14.125L20 15.25" />
-                </svg>
-              ) : (
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-              )}
+              {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
             </button>
           </div>
           {errors.password && <p className="mt-1 text-sm text-destructive">{errors.password}</p>}
         </div>
+        {type === 'register' && (
+          <div>
+            <label className="block text-sm font-medium text-light-text dark:text-dark-text">Confirm Password</label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                name="confirmPassword"
+                value={formData.confirmPassword || ''}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                className={`mt-1 block w-full rounded-md shadow-sm dark:bg-dark-background dark:text-dark-text ${errors.confirmPassword ? 'border-destructive focus:border-destructive focus:ring-destructive' : 'border-light-border dark:border-dark-border focus:border-primary-500 focus:ring-primary-500'} pr-10 bg-light-background`}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(prev => !prev)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-secondary-400 hover:text-secondary-600 transition-colors duration-200"
+              >
+                {showConfirmPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
+              </button>
+            </div>
+            {errors.confirmPassword && <p className="mt-1 text-sm text-destructive">{errors.confirmPassword}</p>}
+          </div>
+        )}
         <button
           type="submit"
           className="w-full py-2 px-4 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors shadow-md"

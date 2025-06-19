@@ -26,5 +26,19 @@ class Config:
     PASSWORD_REQUIRE_DIGIT = True
     PASSWORD_REQUIRE_SPECIAL = True
     
+    # Rate limiting configuration
+    RATE_LIMIT_DEFAULT = "200 per day, 50 per hour"
+    RATE_LIMIT_AUTH = "5 per minute, 50 per hour"
+    RATE_LIMIT_AUTH_ADMIN = "10 per minute, 100 per hour"
+    RATE_LIMIT_PASSWORD_CHANGE = "3 per hour"
+    RATE_LIMIT_USER_MANAGEMENT = "30 per minute, 1000 per hour"
+    RATE_LIMIT_PROFILE = "60 per minute, 2000 per hour"
+    
+    # Logging configuration
+    LOG_MAX_FILE_SIZE_MB = int(os.getenv('LOG_MAX_FILE_SIZE_MB', 5))
+    LOG_BACKUP_COUNT = int(os.getenv('LOG_BACKUP_COUNT', 3))
+    LOG_RETENTION_DAYS = int(os.getenv('LOG_RETENTION_DAYS', 3))
+    LOG_MAX_TOTAL_SIZE_MB = int(os.getenv('LOG_MAX_TOTAL_SIZE_MB', 100))
+    
     # Frontend configuration
     REACT_APP_ORIGIN = os.getenv('REACT_APP_ORIGIN', 'http://localhost:3000') 

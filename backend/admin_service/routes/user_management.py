@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from user_service.models import User
+from shared.models import User
 from shared.db import db
 from shared.utils.auth_utils import admin_required
 from shared.utils.validators import validate_email, validate_password, validate_username
@@ -13,16 +13,10 @@ user_management_logger = setup_logging(__name__)
 @jwt_required()
 @admin_required
 def get_users():
-    users = User.query.all()
-    return jsonify([{
-        'id': user.id,
-        'email': user.email,
-        'username': user.username,
-        'is_active': user.is_active,
-        'created_at': user.created_at.isoformat() if user.created_at else None,
-        'last_login': user.last_login.isoformat() if user.last_login else None,
-        'updated_at': user.updated_at.isoformat() if user.updated_at else None
-    } for user in users])
+    # Only return regular users, not admins
+    users = User.query.filter_by(role='user').all()
+    user_management_logger.info("Admin fetched all regular users.")
+    return jsonify([user.to_dict() for user in users]), 200
 
 @user_management.route('/users', methods=['POST'])
 @jwt_required()
@@ -65,6 +59,7 @@ def create_user():
         username=username,
         email=email,
         name=name,
+        role='user',  # Always create as regular user
         is_active=True  # New users are active by default
     )
     user.set_password(password)
@@ -117,10 +112,10 @@ def update_user(user_id):
 
     current_admin_id = get_jwt_identity()
 
-    # Prevent admin from editing their own account, especially role/status if not intended
+    # Prevent admin from editing their own account via user management
     if user.id == current_admin_id:
         user_management_logger.warning(f"Admin {current_admin_id} attempted to edit their own account via user management.")
-        return jsonify({'error': 'Cannot edit your own account via this interface.'}), 400
+        return jsonify({'error': 'Cannot edit your own account via this interface. Use the profile page instead.'}), 400
 
     if 'role' in data:
         new_role = data['role'].lower()
@@ -184,3 +179,37 @@ def delete_user(user_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500 
+
+@user_management.route('/users/<int:user_id>/activate', methods=['POST'])
+@jwt_required()
+@admin_required
+def activate_user(user_id):
+    user = User.query.get_or_404(user_id)
+    current_admin_id = get_jwt_identity()
+    
+    # Prevent admin from activating themselves
+    if user.id == current_admin_id:
+        return jsonify({'error': 'Cannot activate your own account'}), 400
+    
+    user.is_active = True
+    db.session.commit()
+    
+    user_management_logger.info(f"Admin {current_admin_id} activated user {user_id}.")
+    return jsonify({'message': 'User activated successfully'}), 200
+
+@user_management.route('/users/<int:user_id>/deactivate', methods=['POST'])
+@jwt_required()
+@admin_required
+def deactivate_user(user_id):
+    user = User.query.get_or_404(user_id)
+    current_admin_id = get_jwt_identity()
+    
+    # Prevent admin from deactivating themselves
+    if user.id == current_admin_id:
+        return jsonify({'error': 'Cannot deactivate your own account'}), 400
+    
+    user.is_active = False
+    db.session.commit()
+    
+    user_management_logger.info(f"Admin {current_admin_id} deactivated user {user_id}.")
+    return jsonify({'message': 'User deactivated successfully'}), 200 

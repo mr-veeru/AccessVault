@@ -57,7 +57,9 @@ class ApiService {
       this.showNotification('Logged in successfully!', 'success');
       return response.data;
     } catch (error) {
-      this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      const apiError = error as AxiosError<ApiError>;
+      const message = apiError.response?.data?.error || this.handleError(apiError).message;
+      this.showNotification(message, 'error');
       return undefined;
     }
   }
@@ -147,9 +149,12 @@ class ApiService {
     try {
       const response = await this.adminApi.get<User[]>('/admin/users');
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      // Don't show notification for 401 errors - let component handle them
+      if (error.response?.status !== 401) {
       this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
-      return undefined;
+      }
+      throw error;
     }
   }
 
@@ -157,9 +162,12 @@ class ApiService {
     try {
       const response = await this.adminApi.get<User>(`/admin/users/${userId}`);
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      // Don't show notification for 401 errors - let component handle them
+      if (error.response?.status !== 401) {
       this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
-      return undefined;
+      }
+      throw error;
     }
   }
 
@@ -263,8 +271,11 @@ class ApiService {
       const response = await this.adminApi.put<{'message': string, 'user': User}>(`/admin/users/${userId}`, userData);
       this.showNotification('User updated successfully!', 'success');
       return response.data.user;
-    } catch (error) {
+    } catch (error: any) {
+      // Don't show notification for 401 errors - let component handle them
+      if (error.response?.status !== 401) {
       this.showNotification(this.handleError(error as AxiosError<ApiError>).message, 'error');
+      }
       throw error;
     }
   }
@@ -286,6 +297,10 @@ class ApiService {
         return new Error(error.response.data?.error || 'Invalid credentials');
       } else if (error.response.status === 400) {
         return new Error(error.response.data?.error || error.response.data?.message || 'Registration failed: Please check your input.');
+      } else if (error.response.status === 429) {
+        // Rate limit exceeded
+        const rateLimitMessage = error.response.data?.message || 'Too many requests. Please wait a moment before trying again.';
+        return new Error(rateLimitMessage);
       } else if (error.response.data && error.response.data.message) {
         return new Error(error.response.data.message);
       } else {

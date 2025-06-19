@@ -1,15 +1,17 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from user_service.models import User
+from shared.models import User
 from shared.db import db
 from shared.utils.validators import validate_email, validate_username
 from shared.logger import setup_logging
+from shared.utils.rate_limiter import profile_rate_limit
 
 user_profile_bp = Blueprint('user_profile', __name__)
 user_profile_logger = setup_logging(__name__)
 
 @user_profile_bp.route('/profile', methods=['GET'])
 @jwt_required()
+@profile_rate_limit
 def get_profile():
     current_user_id = get_jwt_identity()
     user = User.query.get(current_user_id)
@@ -25,6 +27,7 @@ def get_profile():
 
 @user_profile_bp.route('/profile', methods=['PUT'])
 @jwt_required()
+@profile_rate_limit
 def update_profile():
     current_user_id = get_jwt_identity()
     user = User.query.get(current_user_id)
@@ -98,8 +101,29 @@ def change_password():
         'message': 'Password changed successfully'
     }), 200
 
-@user_profile_bp.route('/deactivate', methods=['POST'])
+@user_profile_bp.route('/profile', methods=['DELETE'])
 @jwt_required()
+@profile_rate_limit
+def delete_account():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+
+    if not user:
+        user_profile_logger.warning(f"User account deletion failed: User {current_user_id} not found.")
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Permanently delete the user account
+    db.session.delete(user)
+    db.session.commit()
+    
+    user_profile_logger.info(f"User {current_user_id} account deleted successfully.")
+    return jsonify({
+        'message': 'Account deleted successfully'
+    }), 200
+
+@user_profile_bp.route('/profile/deactivate', methods=['POST'])
+@jwt_required()
+@profile_rate_limit
 def deactivate_account():
     current_user_id = get_jwt_identity()
     user = User.query.get(current_user_id)

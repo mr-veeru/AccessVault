@@ -7,9 +7,8 @@ def init_db(app):
     db.init_app(app)
     
     with app.app_context():
-        # Import all models here to ensure they are registered with SQLAlchemy
-        from admin_service.models import Admin
-        from user_service.models import User
+        # Import the single User model
+        from shared.models import User
         
         # Create all tables
         db.create_all() 

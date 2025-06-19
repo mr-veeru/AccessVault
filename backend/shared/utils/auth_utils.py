@@ -19,8 +19,3 @@ def user_required(fn):
             return jsonify({'error': 'User access required'}), 403
         return fn(*args, **kwargs)
     return wrapper
-
-def get_current_user_role():
-    """Get the role of the currently authenticated user."""
-    jwt = get_jwt()
-    return jwt.get('role') 

@@ -6,18 +6,6 @@ export interface User {
   role: string;
   is_active: boolean;
   created_at: string;
-  updated_at: string;
-  last_login: string | null;
-}
-
-export interface Admin {
-  id: number;
-  username: string;
-  email: string;
-  name?: string;
-  role: string;
-  is_active: boolean;
-  created_at: string;
   last_login: string | null;
 }
 
@@ -36,6 +24,7 @@ export interface RegisterData {
   name: string;
   email: string;
   password: string;
+  confirmPassword?: string;
 }
 
 export interface ProfileUpdateData {
@@ -59,5 +48,5 @@ export interface UserProfileResponse {
 
 export interface AdminProfileResponse {
   message: string;
-  admin: Admin;
+  admin: User;
 } 

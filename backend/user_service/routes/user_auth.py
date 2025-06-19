@@ -1,15 +1,17 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from datetime import datetime
-from user_service.models import User
+from shared.models import User
 from shared.db import db
 from shared.utils.validators import validate_email, validate_password, validate_username
 from shared.logger import setup_logging
+from shared.utils.rate_limiter import auth_rate_limit, password_change_rate_limit
 
 user_auth_bp = Blueprint('user_auth', __name__)
 user_auth_logger = setup_logging(__name__)
 
 @user_auth_bp.route('/register', methods=['POST'])
+@auth_rate_limit
 def register():
     data = request.get_json()
     
@@ -63,6 +65,7 @@ def register():
     }), 201
 
 @user_auth_bp.route('/login', methods=['POST'])
+@auth_rate_limit
 def login():
     data = request.get_json()
     
@@ -70,7 +73,6 @@ def login():
         user_auth_logger.warning("User login failed: Missing username/email or password.")
         return jsonify({'error': 'Missing username/email or password'}), 400
     
-    user = None
     login_identifier = (data.get('username_or_email') or data.get('username') or data.get('email')).lower()
 
     if not login_identifier:
@@ -121,6 +123,7 @@ def verify_token():
 
 @user_auth_bp.route('/change-password', methods=['PUT'])
 @jwt_required()
+@password_change_rate_limit
 def change_password():
     current_user_id = get_jwt_identity()
     user = User.query.get(current_user_id)
@@ -147,3 +150,19 @@ def change_password():
     db.session.commit()
 
     return jsonify({'message': 'Password updated successfully'}), 200 
+
+@user_auth_bp.route('/deactivate', methods=['POST'])
+@jwt_required()
+def deactivate_account():
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Deactivate the user account
+    user.is_active = False
+    db.session.commit()
+
+    user_auth_logger.info(f"User '{user.username}' ({user.email}) deactivated their account.")
+    return jsonify({'message': 'Account deactivated successfully'}), 200 

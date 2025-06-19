@@ -1,5 +1,3 @@
-// frontend/src/utils/validation.ts
-
 // Basic email format validation
 export const isValidEmail = (email: string): boolean => {
   if (!email) return false;

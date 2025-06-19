@@ -14,6 +14,7 @@ from shared.db import db
 from dotenv import load_dotenv
 from flask_cors import CORS
 from shared.logger import setup_logging
+from shared.utils.rate_limiter import apply_rate_limits
 
 # Load environment variables
 load_dotenv(os.path.join(project_root, '.env'))
@@ -29,6 +30,9 @@ def create_app():
     db.init_app(app)
     jwt = JWTManager(app)
     CORS(app, resources={r"/*": {"origins": Config.REACT_APP_ORIGIN}})
+    
+    # Apply rate limiting
+    apply_rate_limits(app)
     
     # Swagger configuration
     SWAGGER_URL = '/api/docs'

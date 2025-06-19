@@ -3,6 +3,7 @@ import { User, RegisterData } from '../types';
 import { apiService } from '../services/api';
 import { Link } from 'react-router-dom';
 import ConfirmationDialog from './ConfirmationDialog';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -35,12 +36,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   }, []);
 
   const fetchUsers = async () => {
+    setIsLoading(true);
+    setError('');
     try {
-      setIsLoading(true);
-      const userData = await apiService.getAllUsers();
-      setUsers(userData || []);
-      setError(null);
-    } catch (err) {
+      const usersData = await apiService.getAllUsers();
+      if (usersData) {
+        setUsers(usersData);
+      }
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        // Token expired or invalid, redirect to login
+        onLogout();
+        return;
+      }
       setError('Failed to fetch users');
     } finally {
       setIsLoading(false);
@@ -61,9 +69,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       if (selectedUser?.id === userToDelete.id) {
           setSelectedUser(null);
         }
-      } catch (err) {
-        // Error handling is now done by apiService
-    } finally {
+      } finally {
       setShowDeleteConfirm(false);
       setUserToDelete(null);
     }
@@ -77,9 +83,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const handleViewUserDetails = async (userId: number) => {
     try {
       const userData = await apiService.getUserById(userId);
-      setSelectedUser(userData || null);
-    } catch (err) {
-      setError('Failed to fetch user details');
+      if (userData) {
+        setSelectedUser(userData);
+      }
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        // Token expired or invalid, redirect to login
+        onLogout();
+        return;
+      }
+      // apiService handles other notifications
     }
   };
 
@@ -140,13 +153,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
       fetchUsers();
       setShowEditUserModal(false);
       setSelectedUser(null);
-
-      // If the user's role was changed to admin, log them out
-      if (updatedUser && updatedUser.role === 'admin') {
+    } catch (err: any) {
+      // Handle specific error cases
+      if (err.response?.status === 401) {
+        // Token expired or invalid, redirect to login
         onLogout();
+        return;
       }
-    } catch (err) {
-      // apiService handles notifications
+      if (err.response?.status === 400 && err.response?.data?.error?.includes('Cannot edit your own account')) {
+        // Show specific message for admin self-editing
+        console.error('Admin cannot edit their own account via this interface');
+        return;
+      }
+      // apiService handles other notifications
     }
   };
 
@@ -165,12 +184,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
           >
             Edit Profile
           </Link>
-          <button
-            onClick={onLogout}
-            className="px-4 py-2 bg-destructive text-white rounded hover:bg-red-700 transition-colors shadow-md"
-          >
-            Logout
-          </button>
           <button
             onClick={() => setShowAddUserModal(true)}
             className="px-4 py-2 bg-accent text-white rounded hover:bg-green-700 transition-colors shadow-md"
@@ -285,12 +298,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   <h4 className="text-lg font-semibold text-secondary-600 dark:text-secondary-300">Role:</h4>
                   <div className="flex items-center space-x-2">
                     <p className="text-light-text dark:text-dark-text">{selectedUser.role}</p>
-                    <button
-                      onClick={() => handleEditUserClick(selectedUser)}
-                      className="text-secondary-600 hover:text-secondary-800 dark:text-secondary-400 dark:hover:text-secondary-200 transition-colors duration-200"
-                    >
-                      Change Role
-                    </button>
                   </div>
                 </div>
                 <div>
@@ -378,16 +385,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                     onClick={togglePasswordVisibility}
                     className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5 text-secondary-400 hover:text-secondary-600 transition-colors duration-200"
                   >
-                    {showPassword ? (
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.25L11.75 16.125M6.25 10.625l-.125.125M4.75 6.25L3.625 5.125M17.125 17.125l1.125 1.125M18.875 14.125l1.125 1.125M21.25 11.25L22.375 10.125M11.75 5.125L13.875 7.25M19.75 6.25L20.875 5.125M10.125 3.625L11.25 2.5M10.625 6.25L10.75 6.375M16.125 11.75L18.25 13.875M14.125 18.875L15.25 20M5.125 19.75L6.25 20.875M2.5 11.25L3.625 10.125M11.25 2.5L10.125 3.625M18.875 14.125L20 15.25" />
-                      </svg>
-                    ) : (
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                      </svg>
-                    )}
+                    {showPassword ? <FiEyeOff size={20} /> : <FiEye size={20} />}
                   </button>
                 </div>
               </div>

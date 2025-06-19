@@ -20,6 +20,15 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const timerRefs = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
+  const removeNotification = useCallback((id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    // Clear the timer reference once the notification is removed
+    if (timerRefs.current.has(id)) {
+      clearTimeout(timerRefs.current.get(id)!);
+      timerRefs.current.delete(id);
+    }
+  }, []);
+
   const showNotification = useCallback((message: string, type: Notification['type'] = 'info') => {
     const id = Math.random().toString(36).substring(2, 9);
     setNotifications((prev) => {
@@ -35,22 +44,14 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
       timerRefs.current.set(id, timer);
       return newNotifications;
     });
-  }, []);
-
-  const removeNotification = useCallback((id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-    // Clear the timer reference once the notification is removed
-    if (timerRefs.current.has(id)) {
-      clearTimeout(timerRefs.current.get(id)!);
-      timerRefs.current.delete(id);
-    }
-  }, []);
+  }, [removeNotification]);
 
   // Cleanup timers on unmount
   useEffect(() => {
     return () => {
-      timerRefs.current.forEach(timer => clearTimeout(timer));
-      timerRefs.current.clear();
+      const currentTimerRefs = timerRefs.current;
+      currentTimerRefs.forEach(timer => clearTimeout(timer));
+      currentTimerRefs.clear();
     };
   }, []);
 
