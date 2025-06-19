@@ -124,7 +124,7 @@ class ApiService {
 
   async deactivateOwnAccount(): Promise<boolean> {
     try {
-      await this.userApi.post("/user/deactivate");
+      await this.userApi.post("/user/profile/deactivate");
       this.showNotification("Account deactivated successfully!", "success");
       return true;
     } catch (error: any) {

@@ -24,10 +24,14 @@ def get_users():
 def create_user():
     data = request.get_json()
 
-    required_fields = ['username', 'email', 'password', 'name']
+    required_fields = ['username', 'email', 'password', 'name', 'confirmPassword']
     if not all(field in data for field in required_fields):
         user_management_logger.warning("User creation failed: Missing required fields.")
         return jsonify({'error': 'Missing required fields'}), 400
+
+    if data['password'] != data['confirmPassword']:
+        user_management_logger.warning(f"User creation failed for {data['username']}: Passwords do not match.")
+        return jsonify({'error': 'Passwords do not match'}), 400
 
     email = data['email'].lower()
     username = data['username'].lower()

@@ -288,6 +288,85 @@
           }
         },
         "tags": ["User Management"]
+      },
+      "post": {
+        "summary": "Create a new user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "username",
+                  "email",
+                  "password",
+                  "confirmPassword",
+                  "name"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string",
+                    "description": "Unique username for the user"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Unique email address for the user"
+                  },
+                  "password": {
+                    "type": "string",
+                    "description": "User's password (min 8 characters, incl. uppercase, lowercase, number, special char)"
+                  },
+                  "confirmPassword": {
+                    "type": "string",
+                    "description": "Repeat the password for confirmation"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Full name of the user"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request - Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": ["User Management"]
       }
     },
     "/admin/users/{user_id}": {
@@ -755,11 +834,6 @@
             "format": "date-time",
             "description": "Account creation timestamp"
           },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Last update timestamp"
-          },
           "last_login": {
             "type": "string",
             "format": "date-time",
@@ -799,11 +873,6 @@
             "type": "string",
             "format": "date-time",
             "description": "Account creation timestamp"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Last update timestamp"
           },
           "last_login": {
             "type": "string",

@@ -235,7 +235,7 @@ This guide provides `curl` commands for quick and effective testing of the Admin
     ```bash
     curl -X POST http://localhost:5002/user/auth/register \
       -H "Content-Type: application/json" \
-      -d '{"username": "newuser", "email": "newuser@example.com", "password": "UserPass!123", "name": "New User"}'
+      -d '{"username": "newuser", "email": "newuser@example.com", "password": "UserPass!123", "confirmPassword": "UserPass!123", "name": "New User"}'
     ```
 -   **Expected Output**: A JSON object confirming successful registration and the new user's details.
     ```json

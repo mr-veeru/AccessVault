@@ -16,10 +16,14 @@ def register():
     data = request.get_json()
     
     # Validate required fields
-    required_fields = ['username', 'email', 'password', 'name']
+    required_fields = ['username', 'email', 'password', 'name', 'confirmPassword']
     if not all(field in data for field in required_fields):
         user_auth_logger.warning("User registration failed: Missing required fields.")
         return jsonify({'error': 'Missing required fields'}), 400
+    
+    if data['password'] != data['confirmPassword']:
+        user_auth_logger.warning(f"User registration failed for {data['username']}: Passwords do not match.")
+        return jsonify({'error': 'Passwords do not match'}), 400
     
     # Convert and validate email and username
     email = data['email'].lower()
@@ -151,7 +155,7 @@ def change_password():
 
     return jsonify({'message': 'Password updated successfully'}), 200 
 
-@user_auth_bp.route('/deactivate', methods=['POST'])
+@user_auth_bp.route('/profile/deactivate', methods=['POST'])
 @jwt_required()
 def deactivate_account():
     current_user_id = get_jwt_identity()

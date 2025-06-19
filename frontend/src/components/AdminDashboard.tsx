@@ -25,6 +25,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUserData, setNewUserData] = useState<Partial<RegisterData>>({});
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [addUserError, setAddUserError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [editUserData, setEditUserData] = useState<Partial<User>>({});
@@ -98,14 +100,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
 
   const handleAddUserSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setAddUserError(null);
+    if (!newUserData.username || !newUserData.email || !newUserData.password || !newUserData.name || !confirmPassword) {
+      setAddUserError('All fields are required.');
+      return;
+    }
+    if (newUserData.password !== confirmPassword) {
+      setAddUserError('Passwords do not match.');
+      return;
+    }
     try {
-      if (!newUserData.username || !newUserData.email || !newUserData.password || !newUserData.name) {
-        return;
-      }
-      await apiService.createUser(newUserData as RegisterData);
+      await apiService.createUser({ ...(newUserData as RegisterData), confirmPassword });
       fetchUsers();
       setShowAddUserModal(false);
       setNewUserData({});
+      setConfirmPassword('');
     } catch (err) {
       // Error handling is now done by apiService
     }
@@ -389,6 +398,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
                   </button>
                 </div>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-light-text dark:text-dark-text">Confirm Password</label>
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  className="mt-1 block w-full rounded-md border-light-border dark:border-dark-border shadow-sm focus:border-primary-500 focus:ring-primary-500 bg-light-background dark:bg-dark-background text-light-text dark:text-dark-text"
+                  required
+                />
+              </div>
+              {addUserError && <p className="text-destructive text-sm mt-2">{addUserError}</p>}
               <div className="flex justify-end space-x-4">
                 <button
                   type="button"

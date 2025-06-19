@@ -19,6 +19,7 @@
                   "username",
                   "email",
                   "password",
+                  "confirmPassword",
                   "name"
                 ],
                 "properties": {
@@ -34,6 +35,10 @@
                   "password": {
                     "type": "string",
                     "description": "User's password (min 8 characters, incl. uppercase, lowercase, number, special char)"
+                  },
+                  "confirmPassword": {
+                    "type": "string",
+                    "description": "Repeat the password for confirmation"
                   },
                   "name": {
                     "type": "string",
@@ -565,7 +570,7 @@
         "tags": ["User Profile"]
       }
     },
-    "/user/deactivate": {
+    "/user/profile/deactivate": {
       "post": {
         "summary": "Deactivate user account",
         "security": [
@@ -644,7 +649,7 @@
           },
           "role": {
             "type": "string",
-            "description": "User role (e.g., 'user')"
+            "description": "User role (e.g., 'user' or 'admin')"
           },
           "is_active": {
             "type": "boolean",
@@ -654,11 +659,6 @@
             "type": "string",
             "format": "date-time",
             "description": "Account creation timestamp"
-          },
-          "updated_at": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Last update timestamp"
           },
           "last_login": {
             "type": "string",

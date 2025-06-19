@@ -21,10 +21,10 @@ export interface LoginCredentials {
 
 export interface RegisterData {
   username: string;
-  name: string;
   email: string;
   password: string;
-  confirmPassword?: string;
+  confirmPassword: string;
+  name: string;
 }
 
 export interface ProfileUpdateData {

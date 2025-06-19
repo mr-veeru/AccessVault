@@ -28,7 +28,7 @@ Follow these steps to set up and run AccessVault on your local machine.
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/AccessVault.git
+    git clone https://github.com/mr-veeru/AccessVault.git
     cd AccessVault
     ```
 
@@ -43,50 +43,51 @@ pip install -r backend/requirements.txt
     *   **Important:** Replace placeholders with your actual values.
 
     ```dotenv
-   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/accessvault"
+    DATABASE_URL="postgresql://postgres:postgres@localhost:5432/accessvault"
     JWT_SECRET_KEY="a_very_strong_and_secret_key_for_jwt_tokens" # **CHANGE THIS IN PRODUCTION**
-   ADMIN_SERVICE_PORT=5001
-   USER_SERVICE_PORT=5002
+    ADMIN_SERVICE_PORT=5001
+    USER_SERVICE_PORT=5002
     FLASK_DEBUG=False
-   REACT_APP_ORIGIN=http://localhost:3000
-   ```
+    REACT_APP_ORIGIN=http://localhost:3000
+    ```
 
 4.  **Initialize the database and create a default admin user:**
     (Ensure your PostgreSQL database is running and accessible)
-   ```bash
+    ```bash
     python backend/shared/init_db.py <username> <email> <password> <name>
     # Example: python backend/shared/init_db.py adminuser admin@example.com StrongPass!123 AdminName
-   ```
+    ```
+    **Troubleshooting:** If you see database connection errors, make sure PostgreSQL is running and the credentials in your `.env` file are correct.
 
 5.  **Run the backend services (in separate terminal windows):**
 
     *   **Admin Service:**
-   ```bash
-   python backend/admin_service/app.py
-   ```
+    ```bash
+    python backend/admin_service/app.py
+    ```
     *   **User Service:**
-   ```bash
-   python backend/user_service/app.py
-   ```
+    ```bash
+    python backend/user_service/app.py
+    ```
 
 ### Frontend Setup (ReactJS)
 
 1.  **Navigate to the frontend directory:**
-   ```bash
-   cd frontend
-   ```
+    ```bash
+    cd frontend
+    ```
 
 2.  **Install Node.js dependencies:**
-   ```bash
-   npm install
+    ```bash
+    npm install
     # or yarn install
-   ```
+    ```
 
 3.  **Start the React development server:**
-   ```bash
-   npm start
+    ```bash
+    npm start
     # or yarn start
-   ```
+    ```
     This will typically open the application in your web browser at `http://localhost:3000`.
 
 ## 📂 Project Structure
@@ -130,6 +131,11 @@ project/
 │   ├── postcss.config.js                 # PostCSS configuration
 │   ├── .env.development                  # Frontend environment variables (optional, for specific environments)
 │   └── ... (other React project files)
+│
+├── tests/                                # Automated test scripts (backend & frontend)
+│   ├── test_user_auth.py                 # User registration/login test
+│   ├── test_rate_limiting.py             # Backend rate limiting/log rotation test
+│   └── test_frontend_rate_limit.js       # Frontend rate limit test
 │
 ├── README.md                             # Project overview and setup guide
 ├── TESTING_GUIDE.md                      # Guide for running tests and manual testing steps
@@ -188,6 +194,25 @@ Access the interactive Swagger UI for detailed API specifications:
 *   **Security Monitoring:** All security events (rate limit violations, authentication attempts, etc.) are logged for monitoring and analysis.
 
 📖 **For detailed information about security features, see [SECURITY_FEATURES.md](SECURITY_FEATURES.md)**
+
+## 🧪 Running Tests
+
+All automated test scripts are located in the `tests/` directory.
+
+- **User registration/login test:**
+  ```bash
+  python tests/test_user_auth.py
+  ```
+- **Backend rate limiting/log rotation test:**
+  ```bash
+  python tests/test_rate_limiting.py
+  ```
+- **Frontend rate limit test:**
+  ```bash
+  node tests/test_frontend_rate_limit.js
+  ```
+
+See `TESTING_GUIDE.md` for more advanced/manual API testing instructions.
 
 ## 🙏 Contributing
 
