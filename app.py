@@ -2,11 +2,13 @@
 AccessVault Flask Application Factory
 
 This module contains the Flask application factory pattern implementation.
-It initializes all extensions
+It initializes all extensions, registers blueprints
 """
 
 from flask import Flask, jsonify
-from extensions import db
+from extensions import db, jwt, bcrypt
+from routes.auth import auth_bp
+from routes.profile import profile_bp
 
 
 def create_app():
@@ -22,7 +24,13 @@ def create_app():
     
     # Initialize Flask extensions with the app
     db.init_app(app)      # SQLAlchemy for database operations
-    
+    jwt.init_app(app)     # JWT for authentication
+    bcrypt.init_app(app)  # Bcrypt for password hashing
+
+    # Register blueprints with URL prefixes
+    app.register_blueprint(auth_bp, url_prefix="/auth")        # Authentication routes
+    app.register_blueprint(profile_bp, url_prefix="/profile")    # Profile routes
+
     # Health check endpoint - simple route to verify API is running
     @app.route("/")
     def home():
