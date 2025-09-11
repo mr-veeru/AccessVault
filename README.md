@@ -150,6 +150,88 @@ Authenticate user and receive JWT token.
 }
 ```
 
+### Profile Management
+
+#### Get Profile
+**GET** `/profile/`
+
+Get the current user's profile information.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+  "user_id": 1,
+  "name": "Veerendra",
+  "username": "veeru68",
+  "role": "user",
+  "status": "active"
+}
+```
+
+#### Update Profile
+**PATCH** `/profile/`
+
+Update user's display name and/or username.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+```json
+{
+  "name": "newName",
+  "username": "newUsername"
+}
+```
+
+**Note:** You can update either `name`, `username`, or both. At least one field is required.
+
+#### Update Password
+**PATCH** `/profile/password`
+
+Update user's password.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+```json
+{
+  "old_password": "OldPass@123",
+  "new_password": "NewPass@456",
+  "confirm_password": "NewPass@456"
+}
+```
+
+#### Deactivate Account
+**PATCH** `/profile/deactivate`
+
+Deactivate own account (soft delete).
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+#### Delete Account
+**DELETE** `/profile/`
+
+Delete own account (hard delete).
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
 ## Troubleshooting
 
 ### Common Issues

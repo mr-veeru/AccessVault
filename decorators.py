@@ -31,8 +31,12 @@ def active_required(fn):
         # Query user from database to check status
         user = User.query.get(int(user_id))
         
-        # Check if user exists and is active
-        if not user or user.status != "active":
+        # Check if user exists
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        
+        # Check if user account is active
+        if user.status != "active":
             return jsonify({"error": "Account is deactivated. Please contact admin."}), 403
         
         # User is active, proceed with the original function
