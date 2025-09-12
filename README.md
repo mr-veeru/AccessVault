@@ -73,11 +73,13 @@ The API will be available at `http://127.0.0.1:5000`
 AccessVault/
 ├── app.py              # Flask app factory and main entry point
 ├── config.py           # Application configuration and database settings
+├── create_admin.py     # Script to create initial admin user
 ├── decorators.py       # Role-based access control decorators
 ├── extensions.py       # Flask extensions (db, jwt, bcrypt)
 ├── init_db.py          # Database initialization script
 ├── model.py            # SQLAlchemy database models
 ├── routes/
+│   ├── admin.py        # Admin routes (user management, statistics)
 │   ├── auth.py         # Authentication routes (register, login)
 │   └── profile.py      # User profile routes (profile, updates)
 ├── requirements.txt    # Python package dependencies
@@ -230,6 +232,234 @@ Delete own account (hard delete).
 **Headers:**
 ```
 Authorization: Bearer <access_token>
+```
+
+### Admin Routes
+
+All admin routes require `Authorization: Bearer <access_token>` header with admin role.
+
+#### System Statistics
+**GET** `/admin/stats`
+
+Get comprehensive system statistics for admin dashboard.
+
+**Response:**
+```json
+{
+  "message": "System statistics retrieved successfully",
+  "statistics": {
+    "total_users": 25,
+    "active_users": 20,
+    "inactive_users": 5,
+    "admins": 2,
+    "regular_users": 23
+  }
+}
+```
+
+#### Get All Users
+**GET** `/admin/users`
+
+Retrieve the list of all users in the system.
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Veerendra",
+    "username": "veeru68",
+    "role": "user",
+    "status": "active"
+  },
+  {
+    "id": 2,
+    "name": "Administrator",
+    "username": "admin36",
+    "role": "admin",
+    "status": "active"
+  }
+]
+```
+
+#### Get Active Users
+**GET** `/admin/users/active`
+
+Retrieve all users with active status.
+
+**Response:**
+```json
+{
+  "message": "Active users found",
+  "users": [
+    {
+      "id": 1,
+      "name": "Veerendra",
+      "username": "veeru68",
+      "role": "user",
+      "status": "active"
+    }
+  ]
+}
+```
+
+#### Get Inactive Users
+**GET** `/admin/users/inactive`
+
+Retrieve all users with inactive status.
+
+**Response:**
+```json
+{
+  "message": "Inactive users found",
+  "users": [
+    {
+      "id": 3,
+      "name": "Inactive User",
+      "username": "inactive1",
+      "role": "user",
+      "status": "inactive"
+    }
+  ]
+}
+```
+
+#### Search Users by Username
+**GET** `/admin/users/search/username/<username>`
+
+Search for users by username (case-insensitive partial match).
+
+**Example:** `/admin/users/search/username/veer`
+
+**Response:**
+```json
+{
+  "message": "Found 1 user(s) matching 'veer'",
+  "users": [
+    {
+      "id": 1,
+      "name": "Veerendra",
+      "username": "veeru68",
+      "role": "user",
+      "status": "active"
+    }
+  ]
+}
+```
+
+#### Search Users by Name
+**GET** `/admin/users/search/name/<name>`
+
+Search for users by full name (case-insensitive partial match).
+
+**Example:** `/admin/users/search/name/Veerendra`
+
+#### Get User by ID
+**GET** `/admin/users/<user_id>`
+
+Get specific user details by ID.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "name": "Veerendra",
+  "username": "veeru68",
+  "role": "user",
+  "status": "active"
+}
+```
+
+#### Create User
+**POST** `/admin/users`
+
+Create a new user with default password.
+
+**Request Body:**
+```json
+{
+  "name": "New User",
+  "username": "newuser1",
+  "role": "user"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "New user created successfully",
+  "default_password": "User@123",
+  "user": {
+    "id": 3,
+    "name": "New User",
+    "username": "newuser1",
+    "role": "user",
+    "status": "active"
+  }
+}
+```
+
+#### Update User
+**PATCH** `/admin/users/<user_id>`
+
+Update user details (name, username, role).
+
+**Request Body:**
+```json
+{
+  "name": "Updated Name",
+  "username": "newusername",
+  "role": "admin"
+}
+```
+
+**Note:** You can update any combination of fields. At least one field is required.
+
+#### Activate User
+**PATCH** `/admin/users/<user_id>/activate`
+
+Activate a user account (set status to 'active').
+
+**Response:**
+```json
+{
+  "message": "User activated successfully",
+  "user": {
+    "id": 3,
+    "name": "User Name",
+    "username": "username",
+    "role": "user",
+    "status": "active"
+  }
+}
+```
+
+#### Deactivate User
+**PATCH** `/admin/users/<user_id>/deactivate`
+
+Deactivate a user account (set status to 'inactive').
+
+**Response:**
+```json
+{
+  "message": "User username deactivated"
+}
+```
+
+#### Delete User
+**DELETE** `/admin/users/<user_id>`
+
+Permanently delete a user account (hard delete).
+
+**Edge Cases:**
+- Prevents admin from deleting their own account
+- Validates user exists before deletion
+
+**Response:**
+```json
+{
+  "message": "User username deleted successfully"
+}
 ```
 
 ## Troubleshooting

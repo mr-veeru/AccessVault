@@ -182,9 +182,17 @@ def update_password():
         return jsonify({"error": "Unexpected fields in request"}), 400
     
     # Extract password fields
-    old_password = data.get("old_password").strip()
-    new_password = data.get("new_password").strip()
-    confirm_password = data.get("confirm_password").strip()
+    old_password = data.get("old_password")
+    new_password = data.get("new_password")
+    confirm_password = data.get("confirm_password")
+    
+    # Check that fields are not None before stripping
+    if not all([old_password, new_password, confirm_password]):
+        return jsonify({"error": "All fields are required"}), 400
+    
+    old_password = old_password.strip()
+    new_password = new_password.strip()
+    confirm_password = confirm_password.strip()
     
     # Check that fields are not empty
     if not all([old_password, new_password, confirm_password]):

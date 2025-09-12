@@ -9,6 +9,7 @@ from flask import Flask, jsonify
 from extensions import db, jwt, bcrypt
 from routes.auth import auth_bp
 from routes.profile import profile_bp
+from routes.admin import admin_bp
 
 
 def create_app():
@@ -30,6 +31,7 @@ def create_app():
     # Register blueprints with URL prefixes
     app.register_blueprint(auth_bp, url_prefix="/auth")        # Authentication routes
     app.register_blueprint(profile_bp, url_prefix="/profile")    # Profile routes
+    app.register_blueprint(admin_bp, url_prefix="/admin")       # Admin routes
 
     # Health check endpoint - simple route to verify API is running
     @app.route("/")
