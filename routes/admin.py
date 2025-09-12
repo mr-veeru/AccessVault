@@ -9,7 +9,7 @@ including CRUD operations, user activation/deactivation, and user creation.
 from decorators import role_required, active_required
 from flask import jsonify, Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from model import User
+from models import User
 from extensions import db, bcrypt
 import re
 
@@ -292,7 +292,12 @@ def create_user():
     # Validate required fields
     required_fields = {"name", "username", "role"}
     if not all(field in data for field in required_fields):
-        return jsonify({"error": "Missing fields"}), 400
+        missing_fields = [field for field in required_fields if field not in data]
+        return jsonify({
+            "error": "Missing required fields",
+            "required_fields": list(required_fields),
+            "missing_fields": missing_fields
+        }), 400
 
     # Validate that only allowed fields are provided
     if any(key not in required_fields for key in data.keys()):

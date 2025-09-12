@@ -8,7 +8,7 @@ All routes are prefixed with '/profile' and require authentication.
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from model import User
+from models import User
 from decorators import active_required
 from extensions import db, bcrypt
 import re
@@ -47,6 +47,8 @@ def get_my_profile():
             "role": user.role,
             "status": user.status
         }), 200
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": f"Invalid user ID: {str(e)}"}), 400
     except Exception as e:
         # Handle unexpected errors gracefully
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
@@ -175,7 +177,12 @@ def update_password():
     
     # Check for missing required fields
     if not all(field in data for field in required_fields):
-        return jsonify({"error": "all fields required"}), 400
+        missing_fields = [field for field in required_fields if field not in data]
+        return jsonify({
+            "error": "Missing required fields",
+            "required_fields": list(required_fields),
+            "missing_fields": missing_fields
+        }), 400
     
     # Reject unknown fields for security
     if any(key not in required_fields for key in data.keys()):
@@ -219,7 +226,7 @@ def update_password():
     # Hash new password and update user record
     user.password = bcrypt.generate_password_hash(new_password).decode("utf-8")
     
-    # Save changes to database with error handling
+    # Save changes to database
     db.session.commit()
     return jsonify({"message": "Password updated successfully"}), 200
 
@@ -248,7 +255,7 @@ def deactivate_account():
     # Set account status to inactive
     user.status = "inactive"
     
-    # Save changes to database with error handling
+    # Save changes to database
     db.session.commit()
     return jsonify({"message": "Account deactivated successfully"}), 200
 

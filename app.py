@@ -6,6 +6,7 @@ It initializes all extensions, registers blueprints
 """
 
 from flask import Flask, jsonify
+from sqlalchemy.exc import SQLAlchemyError
 from extensions import db, jwt, bcrypt
 from routes.auth import auth_bp
 from routes.profile import profile_bp
@@ -38,6 +39,29 @@ def create_app():
     def home():
         """Health check endpoint that returns API status."""
         return jsonify({"message": "AccessVault API is running..."})
+
+
+    # ---------- Global error handlers (consistent JSON responses) ----------
+    @app.errorhandler(404)
+    def handle_404(_):
+        """Handle 404 Not Found errors with consistent JSON response."""
+        return jsonify({"error": "Not Found"}), 404
+
+    @app.errorhandler(405)
+    def handle_405(_):
+        """Handle 405 Method Not Allowed errors with consistent JSON response."""
+        return jsonify({"error": "Method Not Allowed"}), 405
+
+    @app.errorhandler(SQLAlchemyError)
+    def handle_sqlalchemy_error(err: SQLAlchemyError):
+        """Handle database-related errors with rollback and error response."""
+        db.session.rollback()
+        return jsonify({"error": f"Database error: {str(err)}"}), 500
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_error(err: Exception):
+        """Handle unexpected errors with generic error response."""
+        return jsonify({"error": f"Internal server error: {str(err)}"}), 500
 
     return app
 

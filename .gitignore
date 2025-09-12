@@ -15,5 +15,4 @@ venv/
 .DS_Store
 
 # Config 
-config.py
 .env

@@ -16,6 +16,10 @@ app = create_app()
 
 # Initialize database within app context
 with app.app_context():
-    # Create all tables defined in the models
-    db.create_all()
-    print("Database tables created successfully")
+    try:
+        # Create all tables defined in the models
+        db.create_all()
+        print("Database tables created successfully")
+    except Exception as e:
+        print(f"Error creating database tables: {str(e)}")
+        exit(1)

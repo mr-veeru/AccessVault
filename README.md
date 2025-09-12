@@ -57,11 +57,23 @@ SQLALCHEMY_DATABASE_URI = (
 ### 4. Initialize Database
 Create the database tables:
 ```bash
-python init_db.py
+python scripts/init_db.py
 ```
 This creates the `users` table based on the User model.
 
-### 5. Run the Application
+### 5. Create Admin User (Optional)
+Create an admin user for testing:
+```bash
+python scripts/create_admin.py
+```
+**Default admin credentials:**
+- name: `Administrator`
+- Username: `admin66`
+- Password: `Admin@123`
+- Role: `admin`
+- Status: `active`
+
+### 6. Run the Application
 Start the Flask development server:
 ```bash
 python app.py
@@ -73,15 +85,16 @@ The API will be available at `http://127.0.0.1:5000`
 AccessVault/
 ├── app.py              # Flask app factory and main entry point
 ├── config.py           # Application configuration and database settings
-├── create_admin.py     # Script to create initial admin user
 ├── decorators.py       # Role-based access control decorators
 ├── extensions.py       # Flask extensions (db, jwt, bcrypt)
-├── init_db.py          # Database initialization script
-├── model.py            # SQLAlchemy database models
+├── models.py            # SQLAlchemy database models
 ├── routes/
 │   ├── admin.py        # Admin routes (user management, statistics)
 │   ├── auth.py         # Authentication routes (register, login)
 │   └── profile.py      # User profile routes (profile, updates)
+├── scripts/
+│   ├── create_admin.py # Script to create initial admin user
+│   └── init_db.py      # Database initialization script
 ├── requirements.txt    # Python package dependencies
 └── README.md           # Project documentation
 ```
@@ -149,8 +162,31 @@ Authenticate user and receive JWT token.
 {
   "message": "Login successful",
   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
 }
 ```
+
+#### Refresh Token
+**POST** `/auth/refresh`
+
+Generate a new access token using a valid refresh token.
+
+**Headers:**
+```
+Authorization: Bearer <refresh_token>
+```
+
+**Response:**
+```json
+{
+  "message": "New access token generated",
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+**Token Expiration:**
+- **Access Token**: 15 minutes (configurable)
+- **Refresh Token**: 7 days (configurable)
 
 ### Profile Management
 

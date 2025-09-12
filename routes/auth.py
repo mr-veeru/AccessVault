@@ -7,8 +7,9 @@ All routes are prefixed with '/auth' and handle user account creation and authen
 
 from flask import Blueprint, request, jsonify
 from extensions import db, bcrypt
-from model import User
-from flask_jwt_extended import create_access_token
+from models import User
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
+
 import re
 
 # Create authentication blueprint
@@ -40,7 +41,12 @@ def register():
     
     # Validate that all required fields are present
     if not all(field in data for field in required_fields):
-        return jsonify({"error": "all fields required"}), 400
+        missing_fields = [field for field in required_fields if field not in data]
+        return jsonify({
+            "error": "Missing required fields",
+            "required_fields": list(required_fields),
+            "missing_fields": missing_fields
+        }), 400
     
     # Reject requests with unexpected fields for security
     if any(key not in required_fields for key in data.keys()):
@@ -78,7 +84,7 @@ def register():
     # Create new user instance with hashed password
     new_user = User(name=name, username=username, password=hashed_pwd)
     
-    # Save user to database with error handling
+    # Save user to database
     db.session.add(new_user)
     db.session.commit()
     return jsonify({"message": "User registered successfully"}), 201
@@ -104,7 +110,12 @@ def login():
     
     # Validate that all required fields are present
     if not all(field in data for field in required_fields):
-        return jsonify({"error": "Both username and password are required"}), 400
+        missing_fields = [field for field in required_fields if field not in data]
+        return jsonify({
+            "error": "Missing required fields",
+            "required_fields": list(required_fields),
+            "missing_fields": missing_fields
+        }), 400
     
     # Reject requests with unexpected fields for security
     if any(key not in required_fields for key in data.keys()):
@@ -130,9 +141,31 @@ def login():
         identity=str(user.id),
         additional_claims={"role": user.role, "status": user.status}
     )
-    
+    refresh_token = create_refresh_token(identity=str(user.id))
+
     # Return success response with both tokens
     return jsonify({
         "message": "Login successful",
         "access_token": access_token,
+        "refresh_token": refresh_token,
+    }), 200
+
+@auth_bp.route("/refresh", methods=["POST"])
+@jwt_required(refresh=True)  # requires a refresh token
+def refresh():
+    """Generate a new access token using refresh token"""
+    user_id = get_jwt_identity()
+    user = User.query.get(int(user_id))
+    if not user or user.status != "active":
+        return jsonify({"error": "User not found or inactive"}), 404
+
+    # issue new access token
+    new_access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={"role": user.role, "status": user.status}
+    )
+
+    return jsonify({
+        "message": "New access token generated",
+        "access_token": new_access_token
     }), 200

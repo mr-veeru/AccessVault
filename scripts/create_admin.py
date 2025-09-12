@@ -14,7 +14,7 @@ Default admin credentials:
 """
 
 from extensions import bcrypt, db
-from model import User
+from models import User
 from app import create_app
 
 # Create Flask app instance
@@ -33,7 +33,7 @@ with app.app_context():
     # Create admin user instance with admin role and active status
     admin = User(name=name, username=username, password=hashed_pwd, role="admin")
     
-    # Save admin to database with error handling
+    # Save admin to database
     db.session.add(admin)
     db.session.commit()
     print("Admin created successfully!")
