@@ -6,7 +6,7 @@ All routes are prefixed with '/auth' and handle user account creation and authen
 """
 
 from flask import Blueprint, request, jsonify
-from extensions import db, bcrypt
+from extensions import db, bcrypt, limiter
 from models import User
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 
@@ -20,6 +20,7 @@ PASSWORD_REGEX = r"^(?=.*[A-Z])(?=.*\d)(?=.*[@#$%&*!?])[A-Za-z\d@#$%&*!?]{6,}$" 
 USERNAME_REGEX = r"^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z0-9]{3,}$" # Requires: at least 3 chars, alphanumeric only, at least one letter and one digit
 
 @auth_bp.route("/register", methods=["POST"])
+@limiter.limit("5 per hour")  # allow 5 registrations per hour per IP
 def register():
     """
     Register a new user account.
@@ -91,6 +92,7 @@ def register():
     
 
 @auth_bp.route("/login", methods=["POST"])
+@limiter.limit("5 per minute")  # max 5 logins per minute per IP
 def login():
     """
     Authenticate user and return JWT tokens.
@@ -151,6 +153,7 @@ def login():
     }), 200
 
 @auth_bp.route("/refresh", methods=["POST"])
+@limiter.limit("10 per minute")  # max 10 refresh attempts per minute per IP
 @jwt_required(refresh=True)  # requires a refresh token
 def refresh():
     """Generate a new access token using refresh token"""

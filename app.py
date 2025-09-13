@@ -7,7 +7,7 @@ It initializes all extensions, registers blueprints
 
 from flask import Flask, jsonify
 from sqlalchemy.exc import SQLAlchemyError
-from extensions import db, jwt, bcrypt
+from extensions import db, jwt, bcrypt, limiter
 from routes.auth import auth_bp
 from routes.profile import profile_bp
 from routes.admin import admin_bp
@@ -29,6 +29,7 @@ def create_app():
     db.init_app(app)      # SQLAlchemy for database operations
     jwt.init_app(app)     # JWT for authentication
     bcrypt.init_app(app)  # Bcrypt for password hashing
+    limiter.init_app(app) # Rate limiting
 
     # Register blueprints with URL prefixes
     app.register_blueprint(auth_bp, url_prefix="/auth")         # Authentication routes

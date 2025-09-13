@@ -10,7 +10,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import User
 from decorators import active_required
-from extensions import db, bcrypt
+from extensions import db, bcrypt, limiter
 import re
 
 # Create profile blueprint
@@ -142,6 +142,7 @@ def update_profile():
 
 
 @profile_bp.route("/password", methods=["PATCH"])
+@limiter.limit("5 per hour")  # max 5 password changes per hour per IP
 @jwt_required()
 @active_required
 def update_password():
@@ -232,6 +233,7 @@ def update_password():
 
 
 @profile_bp.route("/deactivate", methods=["PATCH"])
+@limiter.limit("3 per hour")  # max 3 deactivations per hour per IP
 @jwt_required()
 @active_required
 def deactivate_account():

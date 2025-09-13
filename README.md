@@ -7,6 +7,50 @@ A secure role-based access control (RBAC) system built with **Flask**, **Postgre
 - **Password Security** - bcrypt hashing with strong password policies
 - **Modular Architecture** - Blueprinted REST API for scalability
 - **Database Integration** - SQLAlchemy ORM with PostgreSQL support
+- **Rate Limiting** - Comprehensive protection against abuse and DDoS attacks
+- **Health Monitoring** - Production-ready health check endpoints
+- **Role-Based Access Control** - Admin and user role management
+- **Refresh Token System** - Secure token refresh mechanism
+
+## Rate Limiting
+
+AccessVault implements comprehensive rate limiting to prevent abuse and ensure fair usage. Rate limits are applied per IP address and include both endpoint-specific and global fallback limits.
+
+### Rate Limiting Strategy
+
+| **Endpoint**                      | **Rate Limit** | **Purpose**                  |
+|-----------------------------------|----------------|------------------------------|
+| **User Registration**             | 5 per hour     | Prevent spam account creation|
+| **User Login**                    | 5 per minute   | Prevent brute force attacks  |
+| **Token Refresh**                 | 10 per minute  | Prevent token abuse          |
+| **Password Change**               | 5 per hour     | Prevent password attacks     |
+| **Account Deactivation**          | 3 per hour     | Prevent account abuse        |
+| **User Creation (Admin)**         | 10 per hour    | Prevent admin abuse          |
+| **User Activation/Deactivation**  | 20 per hour    | Allow admin operations       |
+| **User Deletion (Admin)**         | 5 per hour     | Prevent destructive abuse    |
+
+### Global Fallback Limits
+
+All endpoints without specific rate limits are protected by global fallback limits:
+- **100 requests per day** per IP
+- **20 requests per hour** per IP  
+- **5 requests per minute** per IP
+
+### Rate Limit Headers
+
+When rate limits are exceeded, the API returns:
+- **HTTP Status**: `429 Too Many Requests`
+- **Headers**: Rate limit information
+- **Response**: Error message with retry information
+
+### Example Rate Limit Response
+
+```json
+{
+  "error": "Rate limit exceeded: 5 per minute",
+  "retry_after": 60
+}
+```
 
 ## Requirements
 - Python 3.10+
@@ -176,6 +220,8 @@ AccessVault/
 
 Register a new user account.
 
+**Rate Limit**: 5 registrations per hour per IP
+
 **Request Body:**
 ```json
 {
@@ -207,6 +253,8 @@ Register a new user account.
 
 Authenticate user and receive JWT token.
 
+**Rate Limit**: 5 login attempts per minute per IP
+
 **Request Body:**
 ```json
 {
@@ -228,6 +276,8 @@ Authenticate user and receive JWT token.
 **POST** `/auth/refresh`
 
 Generate a new access token using a valid refresh token.
+
+**Rate Limit**: 10 refresh attempts per minute per IP
 
 **Headers:**
 ```
@@ -294,6 +344,8 @@ Authorization: Bearer <access_token>
 
 Update user's password.
 
+**Rate Limit**: 5 password changes per hour per IP
+
 **Headers:**
 ```
 Authorization: Bearer <access_token>
@@ -312,6 +364,8 @@ Authorization: Bearer <access_token>
 **PATCH** `/profile/deactivate`
 
 Deactivate own account (soft delete).
+
+**Rate Limit**: 3 deactivations per hour per IP
 
 **Headers:**
 ```
@@ -469,6 +523,8 @@ Get specific user details by ID.
 
 Create a new user with default password.
 
+**Rate Limit**: 10 user creations per hour per IP
+
 **Request Body:**
 ```json
 {
@@ -514,6 +570,8 @@ Update user details (name, username, role).
 
 Activate a user account (set status to 'active').
 
+**Rate Limit**: 20 activations per hour per IP
+
 **Response:**
 ```json
 {
@@ -533,6 +591,8 @@ Activate a user account (set status to 'active').
 
 Deactivate a user account (set status to 'inactive').
 
+**Rate Limit**: 20 deactivations per hour per IP
+
 **Response:**
 ```json
 {
@@ -544,6 +604,8 @@ Deactivate a user account (set status to 'inactive').
 **DELETE** `/admin/users/<user_id>`
 
 Permanently delete a user account (hard delete).
+
+**Rate Limit**: 5 deletions per hour per IP
 
 **Edge Cases:**
 - Prevents admin from deleting their own account
@@ -572,10 +634,8 @@ Permanently delete a user account (hard delete).
 
 ## Improvements to be done
 1. Logging
-2. Health check
-3. Rate Limiting
-4. Password Reset Functionality
-5. swagger
+2. Password Reset Functionality
+3. swagger
 
 
 ## Commits

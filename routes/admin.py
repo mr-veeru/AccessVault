@@ -10,7 +10,7 @@ from decorators import role_required, active_required
 from flask import jsonify, Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import User
-from extensions import db, bcrypt
+from extensions import db, bcrypt, limiter
 import re
 
 # Create admin blueprint
@@ -265,6 +265,7 @@ def get_user(user_id):
 # ----------------------- POST ROUTES (Create Operations) -----------------------
 
 @admin_bp.route("/users", methods=["POST"])
+@limiter.limit("10 per hour")  # max 10 user creations per hour per IP
 @jwt_required()
 @role_required("admin")
 @active_required
@@ -473,6 +474,7 @@ def update_user(user_id):
     }), 200
 
 @admin_bp.route("/users/<int:user_id>/activate", methods=["PATCH"])
+@limiter.limit("20 per hour")  # max 20 activations per hour per IP
 @jwt_required()
 @role_required("admin")
 @active_required
@@ -521,6 +523,7 @@ def activate_user(user_id):
 
 
 @admin_bp.route("/users/<int:user_id>/deactivate", methods=["PATCH"])
+@limiter.limit("20 per hour")  # max 20 deactivations per hour per IP
 @jwt_required()
 @role_required("admin")
 @active_required
@@ -560,6 +563,7 @@ def deactivate_user(user_id):
 # ----------------------- DELETE ROUTES (Delete Operations) -----------------------
 
 @admin_bp.route("/users/<int:user_id>", methods=["DELETE"])
+@limiter.limit("5 per hour")  # max 5 deletions per hour per IP
 @jwt_required()
 @role_required("admin")
 @active_required
