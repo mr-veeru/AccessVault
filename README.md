@@ -87,8 +87,9 @@ AccessVault/
 ├── config.py           # Application configuration and database settings
 ├── decorators.py       # Role-based access control decorators
 ├── extensions.py       # Flask extensions (db, jwt, bcrypt)
-├── models.py            # SQLAlchemy database models
+├── models.py           # SQLAlchemy database models
 ├── routes/
+│   ├── health.py       # Health check (Checks database connectivity, JWT configuration, and Flask setup)
 │   ├── admin.py        # Admin routes (user management, statistics)
 │   ├── auth.py         # Authentication routes (register, login)
 │   └── profile.py      # User profile routes (profile, updates)
@@ -101,15 +102,72 @@ AccessVault/
 
 ## API Reference
 
-### Health Check
+### Health Check Endpoints
+
+#### Basic Health Check
 **GET** `/` 
 
 **Response:**
 ```json
 {
-  "message":"AccessVault API is running 🚀"
+  "message": "AccessVault API is running 🚀"
 }
 ```
+
+#### Comprehensive Health Check
+**GET** `/health`
+
+**Description:** Detailed health check for monitoring and load balancers. Checks database connectivity, JWT configuration, and Flask setup.
+
+**Response (Healthy):**
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "service": "AccessVault API",
+  "version": "1.0.0",
+  "checks": {
+    "database": {
+      "status": "healthy",
+      "message": "Database connection successful"
+    },
+    "jwt": {
+      "status": "healthy",
+      "message": "JWT configuration valid"
+    },
+    "flask": {
+      "status": "healthy",
+      "message": "Flask configuration valid"
+    }
+  },
+  "system": {
+    "python_version": "3.10.0",
+    "flask_version": "2.3.3",
+    "environment": "development",
+    "debug_mode": true
+  }
+}
+```
+
+**Response (Unhealthy):**
+```json
+{
+  "status": "unhealthy",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "service": "AccessVault API",
+  "version": "1.0.0",
+  "checks": {
+    "database": {
+      "status": "unhealthy",
+      "message": "Database connection failed: connection refused"
+    }
+  }
+}
+```
+
+**Status Codes:**
+- `200` - All systems healthy
+- `503` - One or more systems unhealthy
 
 ### Authentication
 
@@ -511,3 +569,21 @@ Permanently delete a user account (hard delete).
 - JWT tokens expire after 1 hour (configurable in `config.py`)
 - Include `Authorization: Bearer <token>` header for protected routes
 - Get a new token via `/auth/login` when it expires
+
+## Improvements to be done
+1. Logging
+2. Health check
+3. Rate Limiting
+4. Password Reset Functionality
+5. swagger
+
+
+## Commits
+1. initial commit, setup, Health check
+2. Authentication routes, Password Reset Functionality
+3. User routes 
+4. admin routes 
+5. Error handelling of the entire project 
+6. Refresh Token and Rate Limiting
+7. swagger
+8. Logging

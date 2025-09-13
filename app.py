@@ -11,6 +11,7 @@ from extensions import db, jwt, bcrypt
 from routes.auth import auth_bp
 from routes.profile import profile_bp
 from routes.admin import admin_bp
+from routes.health import health_bp
 
 
 def create_app():
@@ -30,15 +31,10 @@ def create_app():
     bcrypt.init_app(app)  # Bcrypt for password hashing
 
     # Register blueprints with URL prefixes
-    app.register_blueprint(auth_bp, url_prefix="/auth")        # Authentication routes
-    app.register_blueprint(profile_bp, url_prefix="/profile")    # Profile routes
+    app.register_blueprint(auth_bp, url_prefix="/auth")         # Authentication routes
+    app.register_blueprint(profile_bp, url_prefix="/profile")   # Profile routes
     app.register_blueprint(admin_bp, url_prefix="/admin")       # Admin routes
-
-    # Health check endpoint - simple route to verify API is running
-    @app.route("/")
-    def home():
-        """Health check endpoint that returns API status."""
-        return jsonify({"message": "AccessVault API is running..."})
+    app.register_blueprint(health_bp)                           # Health check routes
 
 
     # ---------- Global error handlers (consistent JSON responses) ----------
