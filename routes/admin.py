@@ -9,10 +9,14 @@ including CRUD operations, user activation/deactivation, and user creation.
 from decorators import role_required, active_required
 from flask import jsonify, Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import User
+from models import User, PasswordResetToken
 from extensions import db, bcrypt, limiter
 from logger import logger
 import re
+import secrets
+from datetime import datetime, timedelta
+from sqlalchemy.exc import SQLAlchemyError
+from logger import logger
 
 # Create admin blueprint
 admin_bp = Blueprint("admin", __name__)
@@ -262,6 +266,59 @@ def get_user(user_id):
         "role": user.role, 
         "status": user.status
     }), 200
+
+@admin_bp.route("/create-reset-token/<int:user_id>", methods=["GET"])
+@jwt_required()
+@role_required("admin")
+@active_required
+def create_reset_token(user_id):
+    """
+    Admin generates a password reset token for a user.
+    Token expires in 15 minutes and must be used before expiry.
+
+    Args:
+        user_id (int): The ID of the user to create a reset token for
+
+    Requires:
+        Admin role and active account status
+        Authorization header with valid access token
+
+    Returns:
+        JSON response confirming successful reset token creation
+    """
+    # Get admin user ID from JWT token for logging
+    admin_id = int(get_jwt_identity())
+    admin_user = User.query.get(admin_id)
+    logger.info(f"Password reset token generation attempt by admin: {admin_user.username} (ID: {admin_id}) for user: {user_id} from IP: {request.remote_addr}")
+
+    # Query user by ID from database
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Generate secure token
+    token = secrets.token_urlsafe(32)
+
+    # Expiry time (15 minutes from now)
+    expires_at = datetime.utcnow() + timedelta(minutes=15)
+
+    # Save token in DB
+    reset_token = PasswordResetToken(
+        user_id=user.id,
+        token=token,
+        created_at=datetime.utcnow(),
+        expires_at=expires_at
+    )
+    db.session.add(reset_token)
+    db.session.commit()
+
+    logger.info(f"Password reset token generated for {user.username} (ID: {user.id}) by admin: {admin_user.username} (ID: {admin_id}) from IP: {request.remote_addr}")
+
+    return jsonify({
+        "message": f"Password reset token generated for {user.username}",
+        "reset_token": token,  # Admin shares this securely with the user
+        "expires_at": expires_at.isoformat() + "Z"
+    }), 201
     
 # ----------------------- POST ROUTES (Create Operations) -----------------------
 

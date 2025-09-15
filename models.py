@@ -38,3 +38,29 @@ class User(db.Model):
         """String representation of the User object for debugging."""
         return f"<User {self.username}>"
     
+
+class PasswordResetToken(db.Model):
+    """
+    Password Reset Token model representing password reset tokens in the system.
+    
+    Attributes:
+        id (int): Primary key, auto-incrementing token ID
+        user_id (int): Foreign key to User model
+        token (str): Unique token for password reset (max 128 characters)
+        created_at (datetime): Date and time the token was created
+        expires_at (datetime): Expiration date and time for the token
+        used (bool): Indicates if the token has been used (default: False)
+    """
+    __tablename__ = "password_reset_tokens"
+
+    # Primary key - auto-incrementing integer
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Foreign key to User model
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    # Password reset token fields
+    token = db.Column(db.String(128), unique=True, nullable=False) # Unique token for password reset (max 128 characters)
+    created_at = db.Column(db.DateTime, nullable=False) # Date and time the token was created
+    expires_at = db.Column(db.DateTime, nullable=False) # Expiration date and time for the token
+    used = db.Column(db.Boolean, default=False) # Indicates if the token has been used (default: False)

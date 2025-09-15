@@ -7,10 +7,11 @@ All routes are prefixed with '/auth' and handle user account creation and authen
 
 from flask import Blueprint, request, jsonify
 from extensions import db, bcrypt, limiter
-from models import User
+from models import User, PasswordResetToken
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from logger import logger
 import re
+from datetime import datetime
 
 # Create authentication blueprint
 auth_bp = Blueprint("auth", __name__)
@@ -190,3 +191,40 @@ def refresh():
         "message": "New access token generated",
         "access_token": new_access_token
     }), 200
+
+@auth_bp.route("/reset-password", methods=["POST"])
+def reset_password():
+    """Reset password using reset token (given by admin)"""
+    data = request.get_json()
+    token = data.get("token")
+    new_password = data.get("new_password")
+    confirm_password = data.get("confirm_password")
+
+    # Validate input
+    if not all([token, new_password, confirm_password]):
+        return jsonify({"error": "All fields are required"}), 400
+
+    if new_password != confirm_password:
+        return jsonify({"error": "Passwords do not match"}), 400
+
+    if not re.match(PASSWORD_REGEX, new_password):
+        return jsonify({"error": "Password does not meet requirements"}), 400
+
+    # Lookup token in DB
+    reset_token = PasswordResetToken.query.filter_by(token=token, used=False).first()
+    if not reset_token:
+        return jsonify({"error": "Invalid or already used token"}), 400
+
+    if reset_token.expires_at < datetime.utcnow():
+        return jsonify({"error": "Token has expired"}), 400
+
+    # Update user password
+    user = User.query.get(reset_token.user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    user.password = bcrypt.generate_password_hash(new_password).decode("utf-8")
+    reset_token.used = True  # Mark token as consumed
+
+    db.session.commit()
+    return jsonify({"message": "Password reset successful"}), 200

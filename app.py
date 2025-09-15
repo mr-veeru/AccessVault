@@ -2,7 +2,7 @@
 AccessVault Flask Application Factory
 
 This module contains the Flask application factory pattern implementation.
-It initializes all extensions, registers blueprints
+It initializes all extensions, registers blueprints, and scheduled tasks.
 """
 
 from flask import Flask, jsonify
@@ -13,8 +13,30 @@ from routes.profile import profile_bp
 from routes.admin import admin_bp
 from routes.health import health_bp
 from logger import logger
+from flask_apscheduler import APScheduler
+from datetime import datetime, timedelta
+from models import PasswordResetToken
 
 
+# Initialize APScheduler
+scheduler = APScheduler()
+
+# Cleanup expired password reset tokens
+def cleanup_tokens():
+    with scheduler.app.app_context():
+        cutoff = datetime.utcnow() - timedelta(days=30)
+        expired_tokens = PasswordResetToken.query.filter(
+            PasswordResetToken.expires_at < cutoff
+        ).all()
+
+        count = len(expired_tokens)
+        for token in expired_tokens:
+            db.session.delete(token)
+
+        db.session.commit()
+        logger.info(f"[Cleanup] Deleted {count} expired tokens older than 30 days")
+
+# Create app
 def create_app():
     """
     Application factory function that creates and configures the Flask app.

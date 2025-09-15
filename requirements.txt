@@ -6,3 +6,4 @@ Flask-JWT-Extended==4.5.3
 flask-bcrypt==1.0.1
 flask-limiter
 logging
+flask-apscheduler
