@@ -12,6 +12,7 @@ from routes.auth import auth_bp
 from routes.profile import profile_bp
 from routes.admin import admin_bp
 from routes.health import health_bp
+from logger import logger
 
 
 def create_app():
@@ -52,12 +53,14 @@ def create_app():
     @app.errorhandler(SQLAlchemyError)
     def handle_sqlalchemy_error(err: SQLAlchemyError):
         """Handle database-related errors with rollback and error response."""
+        logger.error(f"Database error occurred: {str(err)}")
         db.session.rollback()
         return jsonify({"error": f"Database error: {str(err)}"}), 500
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(err: Exception):
         """Handle unexpected errors with generic error response."""
+        logger.error(f"Unexpected error occurred: {str(err)}")
         return jsonify({"error": f"Internal server error: {str(err)}"}), 500
 
     return app

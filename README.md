@@ -11,6 +11,7 @@ A secure role-based access control (RBAC) system built with **Flask**, **Postgre
 - **Health Monitoring** - Production-ready health check endpoints
 - **Role-Based Access Control** - Admin and user role management
 - **Refresh Token System** - Secure token refresh mechanism
+- **Comprehensive Logging** - Enterprise-grade audit trails and security monitoring
 
 ## Rate Limiting
 
@@ -132,6 +133,7 @@ AccessVault/
 ├── decorators.py       # Role-based access control decorators
 ├── extensions.py       # Flask extensions (db, jwt, bcrypt)
 ├── models.py           # SQLAlchemy database models
+├── logger.py           # Logging configuration and setup
 ├── routes/
 │   ├── health.py       # Health check (Checks database connectivity, JWT configuration, and Flask setup)
 │   ├── admin.py        # Admin routes (user management, statistics)
@@ -140,7 +142,11 @@ AccessVault/
 ├── scripts/
 │   ├── create_admin.py # Script to create initial admin user
 │   └── init_db.py      # Database initialization script
+├── logs/               # Application logs (auto-generated, git-ignored)
+│   └── accessvault.log # Current log file with daily rotation
 ├── requirements.txt    # Python package dependencies
+├── .env                # Environment variables (git-ignored)
+├── .gitignore          # Git ignore patterns
 └── README.md           # Project documentation
 ```
 
@@ -638,12 +644,13 @@ Permanently delete a user account (hard delete).
 3. swagger
 
 
-## Commits
-1. initial commit, setup, Health check
-2. Authentication routes, Password Reset Functionality
-3. User routes 
-4. admin routes 
-5. Error handelling of the entire project 
-6. Refresh Token and Rate Limiting
-7. swagger
-8. Logging
+## Project flow
+1. Project setup (database, JWT), Health check
+2. Logging setup (logger.py)
+3. Global error handling
+4. Authentication routes (login, registration)
+5. Password reset functionality
+6. User routes (profile management)
+7. Admin routes
+8. Refresh token and rate limiting
+9. Swagger documentation

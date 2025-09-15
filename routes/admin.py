@@ -11,6 +11,7 @@ from flask import jsonify, Blueprint, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import User
 from extensions import db, bcrypt, limiter
+from logger import logger
 import re
 
 # Create admin blueprint
@@ -287,6 +288,11 @@ def create_user():
     Returns:
         JSON response with new user details and default password
     """
+    # Get admin user ID from JWT token for logging
+    admin_id = int(get_jwt_identity())
+    admin_user = User.query.get(admin_id)
+    logger.info(f"User creation attempt by admin: {admin_user.username} (ID: {admin_id}) from IP: {request.remote_addr}")
+    
     # Get request data
     data = request.get_json() or {}
 
@@ -349,6 +355,8 @@ def create_user():
     # Save new user to database
     db.session.add(new_user)
     db.session.commit()
+    
+    logger.info(f"User created successfully: {new_user.username} (ID: {new_user.id}) by admin: {admin_user.username} (ID: {admin_id}) from IP: {request.remote_addr}")
     
     # Return success response with user details and default password
     return jsonify({
@@ -589,10 +597,10 @@ def delete_user(user_id):
         - Validates user exists before deletion
     """
     # Get current admin user ID for self-deletion check
-    current_admin_id = int(get_jwt_identity())
+    admin_id = int(get_jwt_identity())
     
     # Prevent admin from deleting themselves
-    if user_id == current_admin_id:
+    if user_id == admin_id:
         return jsonify({"error": "Cannot delete your own account"}), 400
     
     # Query user by ID from database
@@ -601,6 +609,12 @@ def delete_user(user_id):
         return jsonify({"error": "User not found"}), 404
     
     # Permanently delete user from database
+    deleted_username = user.username
+    deleted_user_id = user.id
+    admin_user = User.query.get(admin_id)
+    
     db.session.delete(user)
     db.session.commit()
-    return jsonify({"message": f"User {user.username} deleted successfully"}), 200
+    
+    logger.warning(f"User deleted permanently: {deleted_username} (ID: {deleted_user_id}) by admin: {admin_user.username} (ID: {admin_id}) from IP: {request.remote_addr}")
+    return jsonify({"message": f"User {deleted_username} deleted successfully"}), 200

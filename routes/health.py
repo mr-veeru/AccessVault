@@ -9,6 +9,7 @@ import sys
 from extensions import db
 from sqlalchemy import text
 from flask import current_app as app
+from logger import logger
 
 
 # Create health check blueprint
@@ -50,6 +51,7 @@ def health_check():
             "message": "Database connection successful"
         }
     except Exception as e:
+        logger.error(f"Database health check failed: {str(e)}")
         health_status["checks"]["database"] = {
             "status": "unhealthy",
             "message": f"Database connection failed: {str(e)}"

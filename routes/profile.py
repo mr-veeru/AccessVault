@@ -11,6 +11,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import User
 from decorators import active_required
 from extensions import db, bcrypt, limiter
+from logger import logger
 import re
 
 # Create profile blueprint
@@ -167,6 +168,7 @@ def update_password():
     # Get user ID from JWT token
     user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
+    logger.info(f"Password change attempt for user: {user.username} (ID: {user_id}) from IP: {request.remote_addr}")
 
     # Define required fields for password update
     required_fields = {"old_password", "new_password", "confirm_password"}
@@ -208,6 +210,7 @@ def update_password():
     
     # Verify current password is correct
     if not bcrypt.check_password_hash(user.password, old_password):
+        logger.warning(f"Password change failed - incorrect old password for user: {user.username} (ID: {user_id}) from IP: {request.remote_addr}")
         return jsonify({"error": "Old password is incorrect"}), 400
     
     # Verify new password and confirmation match
@@ -229,6 +232,7 @@ def update_password():
     
     # Save changes to database
     db.session.commit()
+    logger.info(f"Password updated successfully for user: {user.username} (ID: {user_id}) from IP: {request.remote_addr}")
     return jsonify({"message": "Password updated successfully"}), 200
 
 
@@ -253,12 +257,14 @@ def deactivate_account():
     # Get user ID from JWT token
     user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
+    logger.info(f"Account deactivation attempt for user: {user.username} (ID: {user_id}) from IP: {request.remote_addr}")
 
     # Set account status to inactive
     user.status = "inactive"
     
     # Save changes to database
     db.session.commit()
+    logger.info(f"Account deactivated successfully for user: {user.username} (ID: {user_id}) from IP: {request.remote_addr}")
     return jsonify({"message": "Account deactivated successfully"}), 200
 
 

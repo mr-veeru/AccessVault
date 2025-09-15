@@ -16,3 +16,7 @@ venv/
 
 # Config 
 .env
+
+# Logs
+logs/
+*.log
