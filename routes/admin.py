@@ -1,677 +1,447 @@
 """
 Admin Routes Module
 
-This module contains administrative routes that require admin role access.
-All routes are prefixed with '/admin' and handle user management operations
-including CRUD operations, user activation/deactivation, and user creation.
+This module contains administrative routes for user management, system statistics,
+and password reset token generation. All routes require admin role and JWT authentication.
+Uses Flask-RESTX for automatic Swagger documentation.
 """
 
-from decorators import role_required, active_required
-from flask import jsonify, Blueprint, request
+from flask import request
+from flask_restx import Namespace, Resource, fields
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import User, PasswordResetToken
-from extensions import db, bcrypt, limiter
+from decorators import role_required
+from extensions import db, bcrypt, limiter, api
 from logger import logger
 import re
 import secrets
 from datetime import datetime, timedelta
-from sqlalchemy.exc import SQLAlchemyError
-from logger import logger
 
-# Create admin blueprint
-admin_bp = Blueprint("admin", __name__)
+# Create admin namespace
+admin_ns = Namespace('admin', description='Administrative operations')
+
+# Request/Response models for Swagger documentation
+user_model = api.model('User', {
+    'id': fields.Integer(description='User ID'),
+    'name': fields.String(description='Full name'),
+    'username': fields.String(description='Username'),
+    'role': fields.String(description='User role'),
+    'status': fields.String(description='Account status')
+})
+
+create_user_model = api.model('CreateUser', {
+    'name': fields.String(required=True, description='Full name', example='John Doe'),
+    'username': fields.String(required=True, description='Username (3+ chars, letters+numbers)', example='johndoe123'),
+    'role': fields.String(required=True, description='User role', example='user', enum=['user', 'admin'])
+})
+
+update_user_model = api.model('UpdateUser', {
+    'name': fields.String(description='Full name', example='John Doe'),
+    'username': fields.String(description='Username (3+ chars, letters+numbers)', example='johndoe123'),
+    'role': fields.String(description='User role', example='user', enum=['user', 'admin'])
+})
+
+stats_model = api.model('Stats', {
+    'total_users': fields.Integer(description='Total number of users'),
+    'active_users': fields.Integer(description='Number of active users'),
+    'inactive_users': fields.Integer(description='Number of inactive users'),
+    'admins': fields.Integer(description='Number of admin users'),
+    'regular_users': fields.Integer(description='Number of regular users')
+})
+
+reset_token_model = api.model('ResetToken', {
+    'token': fields.String(description='Reset token'),
+    'expires_at': fields.String(description='Token expiration time'),
+    'user': fields.Nested(user_model, description='User information')
+})
 
 # Regex validation patterns
-USERNAME_REGEX = r"^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z0-9]{3,}$" # Requires: at least 3 chars, alphanumeric only, at least one letter and one digit
+PASSWORD_REGEX = r"^(?=.*[A-Z])(?=.*\d)(?=.*[@#$%&*!?])[A-Za-z\d@#$%&*!?]{6,}$"
+USERNAME_REGEX = r"^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z0-9]{3,}$"
 
-
-# ----------------------- GET ROUTES (Read Operations) -----------------------
-
-@admin_bp.route("/stats", methods=["GET"])
-@jwt_required()
-@role_required("admin")
-@active_required
-def get_stats():
-    """
-    Get comprehensive system statistics for admin dashboard.
-    
-    Provides counts of users by status and role for administrative oversight.
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON response with system statistics including:
-        - Total user count
-        - Active/inactive user counts
-        - Admin/user role counts
-    """
-    # Query user counts from database
-    total_users = User.query.count()
-    active_users = User.query.filter_by(status="active").count()
-    inactive_users = User.query.filter_by(status="inactive").count()
-    admins = User.query.filter_by(role="admin").count()
-    users = User.query.filter_by(role="user").count()
-    
-    return jsonify({
-        "message": "System statistics retrieved successfully",
-        "statistics": {
+@admin_ns.route('/stats')
+class Stats(Resource):
+    @admin_ns.marshal_with(stats_model, code=200)
+    @jwt_required()
+    @role_required("admin")
+    def get(self):
+        """Get comprehensive system statistics"""
+        total_users = User.query.count()
+        active_users = User.query.filter_by(status="active").count()
+        inactive_users = User.query.filter_by(status="inactive").count()
+        admins = User.query.filter_by(role="admin").count()
+        regular_users = User.query.filter_by(role="user").count()
+        
+        return {
             "total_users": total_users,
             "active_users": active_users,
             "inactive_users": inactive_users,
             "admins": admins,
-            "regular_users": users
-        }
-    }), 200
+            "regular_users": regular_users
+        }, 200
 
-@admin_bp.route("/users", methods=["GET"])
-@jwt_required()
-@role_required("admin")
-@active_required
-def get_all_users():
-    """
-    Retrieve all users in the system.
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON array of all users with their details
-    """
-    # Query all users from database
-    users = User.query.all()
-    
-    # Return user list with selected fields (excluding passwords)
-    return jsonify([
-        {
-            "id": u.id, 
-            "name": u.name, 
-            "username": u.username, 
-            "role": u.role, 
-            "status": u.status
-        } for u in users
-    ]), 200
+@admin_ns.route('/users')
+class Users(Resource):
+    @admin_ns.marshal_list_with(user_model, code=200)
+    @jwt_required()
+    @role_required("admin")
+    def get(self):
+        """Get all users in the system"""
+        users = User.query.all()
+        return [
+            {
+                "id": user.id,
+                "name": user.name,
+                "username": user.username,
+                "role": user.role,
+                "status": user.status
+            }
+            for user in users
+        ], 200
 
-@admin_bp.route("/users/active", methods=["GET"])
-@jwt_required()
-@role_required("admin")
-@active_required
-def get_all_active_users():
-    """
-    Get all active users.
-    
-    This allows a previously deactivated user to log in again.
-    
-    Args:
-        None
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON response with active users information
-    """
-    # Query all active users from database
-    users = User.query.filter_by(status="active").all()
-    
-    # Check if active users exist
-    if not users:
-        return jsonify({"error": "No active users found"}), 404
-    
-    # Return success response with active users information
-    return jsonify({
-        "message": "Active users found",
-        "users": [{
-            "id": u.id, 
-            "name": u.name, 
-            "username": u.username, 
-            "role": u.role, 
-            "status": u.status
-        } for u in users]
-    }), 200
-
-@admin_bp.route("/users/inactive", methods=["GET"])
-@jwt_required()
-@role_required("admin")
-@active_required
-def get_all_inactive_users():
-    """
-    Get all inactive users.
-    """
-    # Query all inactive users from database
-    users = User.query.filter_by(status="inactive").all()
-    
-    # Check if inactive users exist
-    if not users:
-        return jsonify({"error": "No inactive users found"}), 404
-    
-    # Return success response with inactive users information
-    return jsonify({
-        "message": "Inactive users found",
-        "users": [{
-            "id": u.id, 
-            "name": u.name, 
-            "username": u.username, 
-            "role": u.role, 
-            "status": u.status
-        } for u in users]
-    }), 200
-
-
-@admin_bp.route("/users/search/username/<string:username>", methods=["GET"])
-@jwt_required()
-@role_required("admin")
-@active_required
-def search_users_by_username(username):
-    """
-    Search for users by username (case-insensitive partial match).
-    
-    Args:
-        username (str): Username to search for (partial match supported)
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON response with matching users or empty array if no matches found
-    """
-    # Validate search query
-    if not username or not username.strip():
-        return jsonify({"error": "Username search query cannot be empty"}), 400
-    
-    # Search for users with partial username match (case-insensitive)
-    users = User.query.filter(User.username.ilike(f"%{username.strip()}%")).all()
-    
-    return jsonify({
-        "message": f"Found {len(users)} user(s) matching '{username}'",
-        "users": [{
-            "id": u.id, 
-            "name": u.name, 
-            "username": u.username, 
-            "role": u.role, 
-            "status": u.status
-        } for u in users]
-    }), 200
-
-@admin_bp.route("/users/search/name/<string:name>", methods=["GET"])
-@jwt_required()
-@role_required("admin")
-@active_required
-def search_users_by_name(name):
-    """
-    Search for users by full name (case-insensitive partial match).
-    
-    Args:
-        name (str): Full name to search for (partial match supported)
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON response with matching users or empty array if no matches found
-    """
-    # Validate search query
-    if not name or not name.strip():
-        return jsonify({"error": "Name search query cannot be empty"}), 400
-    
-    # Search for users with partial name match (case-insensitive)
-    users = User.query.filter(User.name.ilike(f"%{name.strip()}%")).all()
-    
-    return jsonify({
-        "message": f"Found {len(users)} user(s) matching '{name}'",
-        "users": [{
-            "id": u.id, 
-            "name": u.name, 
-            "username": u.username, 
-            "role": u.role, 
-            "status": u.status
-        } for u in users]
-    }), 200
-
-@admin_bp.route("/users/<int:user_id>", methods=["GET"])
-@jwt_required()
-@role_required("admin")
-@active_required
-def get_user(user_id):
-    """
-    Retrieve a specific user by their ID.
-    
-    Args:
-        user_id (int): The ID of the user to retrieve
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON response with user details or 404 if not found
-    """
-    # Query user by ID from database
-    user = User.query.get(user_id)
-    
-    # Check if user exists
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-    
-    # Return user information (excluding sensitive data like password)
-    return jsonify({
-        "id": user.id, 
-        "name": user.name, 
-        "username": user.username, 
-        "role": user.role, 
-        "status": user.status
-    }), 200
-
-@admin_bp.route("/create-reset-token/<int:user_id>", methods=["GET"])
-@jwt_required()
-@role_required("admin")
-@active_required
-def create_reset_token(user_id):
-    """
-    Admin generates a password reset token for a user.
-    Token expires in 15 minutes and must be used before expiry.
-
-    Args:
-        user_id (int): The ID of the user to create a reset token for
-
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-
-    Returns:
-        JSON response confirming successful reset token creation
-    """
-    # Get admin user ID from JWT token for logging
-    admin_id = int(get_jwt_identity())
-    admin_user = User.query.get(admin_id)
-    logger.info(f"Password reset token generation attempt by admin: {admin_user.username} (ID: {admin_id}) for user: {user_id} from IP: {request.remote_addr}")
-
-    # Query user by ID from database
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    # Generate secure token
-    token = secrets.token_urlsafe(32)
-
-    # Expiry time (15 minutes from now)
-    expires_at = datetime.utcnow() + timedelta(minutes=15)
-
-    # Save token in DB
-    reset_token = PasswordResetToken(
-        user_id=user.id,
-        token=token,
-        created_at=datetime.utcnow(),
-        expires_at=expires_at
-    )
-    db.session.add(reset_token)
-    db.session.commit()
-
-    logger.info(f"Password reset token generated for {user.username} (ID: {user.id}) by admin: {admin_user.username} (ID: {admin_id}) from IP: {request.remote_addr}")
-
-    return jsonify({
-        "message": f"Password reset token generated for {user.username}",
-        "reset_token": token,  # Admin shares this securely with the user
-        "expires_at": expires_at.isoformat() + "Z"
-    }), 201
-    
-# ----------------------- POST ROUTES (Create Operations) -----------------------
-
-@admin_bp.route("/users", methods=["POST"])
-@limiter.limit("10 per hour")  # max 10 user creations per hour per IP
-@jwt_required()
-@role_required("admin")
-@active_required
-def create_user():
-    """
-    Create a new user account with default password.
-    
-    Expected JSON payload:
-    {
-        "name": "User Full Name",
-        "username": "unique_username",
-        "role": "user"  // or "admin"
-    }
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON response with new user details and default password
-    """
-    # Get admin user ID from JWT token for logging
-    admin_id = int(get_jwt_identity())
-    admin_user = User.query.get(admin_id)
-    logger.info(f"User creation attempt by admin: {admin_user.username} (ID: {admin_id}) from IP: {request.remote_addr}")
-    
-    # Get request data
-    data = request.get_json() or {}
-
-    # Validate required fields
-    required_fields = {"name", "username", "role"}
-    if not all(field in data for field in required_fields):
-        missing_fields = [field for field in required_fields if field not in data]
-        return jsonify({
-            "error": "Missing required fields",
-            "required_fields": list(required_fields),
-            "missing_fields": missing_fields
-        }), 400
-
-    # Validate that only allowed fields are provided
-    if any(key not in required_fields for key in data.keys()):
-        return jsonify({"error": "Unexpected fields in request"}), 400
-
-    # Validate field values
-    if not data["name"] or not data["name"].strip():
-        return jsonify({"error": "Name cannot be empty"}), 400
-    
-    if not data["username"] or not data["username"].strip():
-        return jsonify({"error": "Username cannot be empty"}), 400
-    
-    if not data["role"] or not data["role"].strip():
-        return jsonify({"error": "Role cannot be empty"}), 400
-
-    # Validate name length
-    if len(data["name"].strip()) > 100:
-        return jsonify({"error": "Name cannot exceed 100 characters"}), 400
-
-    # Validate username format
-    username = data["username"].lower().strip()
-    if not re.match(USERNAME_REGEX, username):
-        return jsonify({
-            "error": "Invalid username: must be alphanumeric, at least 3 characters, and contain at least one letter and one digit"
-        }), 400
-
-    # Validate role value
-    if data["role"] not in ["user", "admin"]:
-        return jsonify({"error": "Invalid role. Allowed: user, admin"}), 400
-
-    # Check if username already exists
-    if User.query.filter_by(username=username).first():
-        return jsonify({"error": "Username already exists"}), 400
-
-    # Generate default password and hash it
-    default_password = "User@123"
-    hashed_pwd = bcrypt.generate_password_hash(default_password).decode("utf-8")
-
-    # Create new user instance with provided data and default password
-    new_user = User(
-        name=data["name"].strip(),
-        username=username,
-        password=hashed_pwd,
-        role=data["role"],
-        status="active"
-    )
-    
-    # Save new user to database
-    db.session.add(new_user)
-    db.session.commit()
-    
-    logger.info(f"User created successfully: {new_user.username} (ID: {new_user.id}) by admin: {admin_user.username} (ID: {admin_id}) from IP: {request.remote_addr}")
-    
-    # Return success response with user details and default password
-    return jsonify({
-        "message": "New user created successfully",
-        "default_password": default_password,
-        "user": {
+    @admin_ns.expect(create_user_model)
+    @jwt_required()
+    @role_required("admin")
+    @limiter.limit("10 per hour")
+    def post(self):
+        """Create a new user with default password"""
+        data = request.get_json()
+        
+        if not data:
+            return {"error": "No JSON data provided"}, 400
+        
+        # Check for required fields
+        required_fields = ["name", "username", "role"]
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        
+        if missing_fields:
+            return {
+                "error": "Missing required fields",
+                "missing_fields": missing_fields,
+                "required_fields": required_fields
+            }, 400
+        
+        # Check for unexpected fields
+        expected_fields = set(required_fields)
+        provided_fields = set(data.keys())
+        unexpected_fields = provided_fields - expected_fields
+        
+        if unexpected_fields:
+            return {
+                "error": "Unexpected fields provided",
+                "unexpected_fields": list(unexpected_fields),
+                "expected_fields": list(expected_fields)
+            }, 400
+        
+        name = data["name"].strip()
+        username = data["username"].strip().lower()  # Convert to lowercase for case-insensitive usernames
+        role = data["role"].strip()
+        
+        # Validate name
+        if not name or len(name) < 2:
+            return {"error": "Name must be at least 2 characters long"}, 400
+        
+        # Validate username format
+        if not re.match(USERNAME_REGEX, username):
+            return {
+                "error": "Username must be at least 3 characters, contain only letters and numbers, and have at least one letter and one number"
+            }, 400
+        
+        # Validate role
+        if role not in ["user", "admin"]:
+            return {"error": "Role must be either 'user' or 'admin'"}, 400
+        
+        # Check if username already exists
+        if User.query.filter_by(username=username).first():
+            return {"error": "Username already exists"}, 400
+        
+        # Create new user with default password
+        default_password = "User@123"
+        hashed_password = bcrypt.generate_password_hash(default_password).decode('utf-8')
+        
+        new_user = User(
+            name=name,
+            username=username,
+            password=hashed_password,
+            role=role,
+            status="active"
+        )
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        logger.info(f"New user created by admin: {username} (ID: {new_user.id}) from IP: {request.remote_addr}")
+        
+        return {
             "id": new_user.id,
             "name": new_user.name,
             "username": new_user.username,
             "role": new_user.role,
             "status": new_user.status
-        }
-    }), 201
+        }, 201
 
-# ----------------------- PATCH ROUTES (Update Operations) -----------------------
+@admin_ns.route('/users/active')
+class ActiveUsers(Resource):
+    @admin_ns.marshal_list_with(user_model, code=200)
+    @jwt_required()
+    @role_required("admin")
+    def get(self):
+        """Get all active users"""
+        users = User.query.filter_by(status="active").all()
+        return [
+            {
+                "id": user.id,
+                "name": user.name,
+                "username": user.username,
+                "role": user.role,
+                "status": user.status
+            }
+            for user in users
+        ], 200
 
-@admin_bp.route("/users/<int:user_id>", methods=["PATCH"])
-@jwt_required()
-@role_required("admin")
-@active_required
-def update_user(user_id):
-    """
-    Update a user's information (name, username, role).
-    
-    Args:
-        user_id (int): The ID of the user to update
-    
-    Expected JSON payload:
-    {
-        "name": "Updated Name",        // Optional
-        "username": "new_username",    // Optional
-        "role": "admin"                // Optional
-    }
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON response confirming successful update
-    """
-    # Query user by ID from database
-    user = User.query.get(user_id)
-    
-    # Check if user exists
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-    
-    # Get request data
-    data = request.get_json() or {}
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
+@admin_ns.route('/users/inactive')
+class InactiveUsers(Resource):
+    @admin_ns.marshal_list_with(user_model, code=200)
+    @jwt_required()
+    @role_required("admin")
+    def get(self):
+        """Get all inactive users"""
+        users = User.query.filter_by(status="inactive").all()
+        return [
+            {
+                "id": user.id,
+                "name": user.name,
+                "username": user.username,
+                "role": user.role,
+                "status": user.status
+            }
+            for user in users
+        ], 200
 
-    # Validate that at least one updatable field is provided
-    if not any(key in data for key in ["name", "username", "role"]):
-        return jsonify({"error": "At least one field (name or username or role) is required"}), 400
+@admin_ns.route('/users/search/username/<username>')
+class SearchByUsername(Resource):
+    @admin_ns.marshal_list_with(user_model, code=200)
+    @jwt_required()
+    @role_required("admin")
+    def get(self, username):
+        """Search users by username (case-insensitive partial match)"""
+        users = User.query.filter(User.username.ilike(f"%{username}%")).all()
+        return [
+            {
+                "id": user.id,
+                "name": user.name,
+                "username": user.username,
+                "role": user.role,
+                "status": user.status
+            }
+            for user in users
+        ], 200
+
+@admin_ns.route('/users/search/name/<name>')
+class SearchByName(Resource):
+    @admin_ns.marshal_list_with(user_model, code=200)
+    @jwt_required()
+    @role_required("admin")
+    def get(self, name):
+        """Search users by full name (case-insensitive partial match)"""
+        users = User.query.filter(User.name.ilike(f"%{name}%")).all()
+        return [
+            {
+                "id": user.id,
+                "name": user.name,
+                "username": user.username,
+                "role": user.role,
+                "status": user.status
+            }
+            for user in users
+        ], 200
+
+@admin_ns.route('/users/<int:user_id>')
+class UserById(Resource):
+    @jwt_required()
+    @role_required("admin")
+    def get(self, user_id):
+        """Get user by ID"""
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
         
-    # Reject unknown fields for security
-    allowed_fields = {"name", "username", "role"}
-    if any(key not in allowed_fields for key in data.keys()):
-        return jsonify({"error": "Unexpected fields in request"}), 400
-    
-    # Update name if provided
-    if "name" in data:
-        new_name = data.get("name")
-        if not new_name or not new_name.strip():
-            return jsonify({"error": "Name cannot be empty"}), 400
-        new_name = new_name.strip()
+        return {
+            "id": user.id,
+            "name": user.name,
+            "username": user.username,
+            "role": user.role,
+            "status": user.status
+        }, 200
+
+    @admin_ns.expect(update_user_model)
+    @jwt_required()
+    @role_required("admin")
+    def patch(self, user_id):
+        """Update user by ID"""
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
         
-        # Validate name length
-        if len(new_name) > 100:
-            return jsonify({"error": "Name cannot exceed 100 characters"}), 400
+        data = request.get_json()
         
-        user.name = new_name
-    
-    # Update username if provided (with uniqueness check)
-    if "username" in data:
-        new_username = data.get("username")
-        if not new_username or not new_username.strip():
-            return jsonify({"error": "Username cannot be empty"}), 400
-        new_username = new_username.lower().strip()
+        if not data:
+            return {"error": "No JSON data provided"}, 400
         
-        # Validate username format
-        if not re.match(USERNAME_REGEX, new_username):
-            return jsonify({
-                "error": "Invalid username: must be alphanumeric, at least 3 characters, and contain at least one letter and one digit"
-            }), 400
+        # Check if at least one field is provided
+        if not any(field in data for field in ["name", "username", "role"]):
+            return {"error": "At least one field (name, username, or role) must be provided"}, 400
         
-        # Only update if username is actually changing
-        if new_username != user.username:
-            # Check if new username already exists
-            existing_user = User.query.filter_by(username=new_username).first()
+        # Update name if provided
+        if "name" in data:
+            name = data["name"].strip() if data["name"] else ""
+            if not name or len(name) < 2:
+                return {"error": "Name must be at least 2 characters long"}, 400
+            user.name = name
+        
+        # Update username if provided
+        if "username" in data:
+            username = data["username"].strip().lower() if data["username"] else ""
+            if not username:
+                return {"error": "Username cannot be empty"}, 400
+            
+            # Validate username format
+            if not re.match(USERNAME_REGEX, username):
+                return {
+                    "error": "Username must be at least 3 characters, contain only letters and numbers, and have at least one letter and one number"
+                }, 400
+            
+            # Check if username already exists (excluding current user)
+            existing_user = User.query.filter(User.username == username, User.id != user.id).first()
             if existing_user:
-                return jsonify({"error": "Username already exists"}), 400
-            user.username = new_username
-   
-    # Update role if provided (with validation)
-    if "role" in data:
-        new_role = data.get("role")
-        if not new_role or not new_role.strip():
-            return jsonify({"error": "Role cannot be empty"}), 400
-        new_role = new_role.strip()
+                return {"error": "Username already exists"}, 400
+            
+            user.username = username
         
-        # Validate role value
-        if new_role not in ["user", "admin"]:
-            return jsonify({"error": "Invalid role. Allowed: user, admin"}), 400
-
-        user.role = new_role
-
-    # Save changes to database
-    db.session.commit()
-
-    # Return success response with updated user information
-    return jsonify({
-        "message": "Profile updated successfully",
-        "user": {
+        # Update role if provided
+        if "role" in data:
+            role = data["role"].strip() if data["role"] else ""
+            if role not in ["user", "admin"]:
+                return {"error": "Role must be either 'user' or 'admin'"}, 400
+            user.role = role
+        
+        db.session.commit()
+        
+        logger.info(f"User updated by admin: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
+        
+        return {
             "id": user.id,
             "name": user.name,
             "username": user.username,
             "role": user.role,
             "status": user.status
-        }
-    }), 200
+        }, 200
 
-@admin_bp.route("/users/<int:user_id>/activate", methods=["PATCH"])
-@limiter.limit("20 per hour")  # max 20 activations per hour per IP
-@jwt_required()
-@role_required("admin")
-@active_required
-def activate_user(user_id):
-    """
-    Activate a user account (set status to 'active').
-    
-    This allows a previously deactivated user to log in again.
-    
-    Args:
-        user_id (int): The ID of the user to activate
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON response confirming activation or current status
-    """
-    # Query user by ID from database
-    user = User.query.get(user_id)
-    
-    # Check if user exists
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-    
-    # Check if user is already active
-    if user.status == "active":
-        return jsonify({"message": f"User {user.username} is already active"}), 200
-    
-    # Set user status to active
-    user.status = "active"
-    db.session.commit()
+    @jwt_required()
+    @role_required("admin")
+    @limiter.limit("5 per hour")
+    def delete(self, user_id):
+        """Delete user by ID"""
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
+        
+        # Prevent admin from deleting their own account
+        current_user_id = int(get_jwt_identity())  # JWT identity is now a string
+        if user_id == current_user_id:
+            return {"error": "Cannot delete your own account"}, 400
+        
+        username = user.username
+        db.session.delete(user)
+        db.session.commit()
+        
+        logger.info(f"User deleted by admin: {username} (ID: {user_id}) from IP: {request.remote_addr}")
+        
+        return {"message": f"User {username} deleted successfully"}, 200
 
-    # Return success response with updated user information
-    return jsonify({
-        "message": "User activated successfully",
-        "user": {
+@admin_ns.route('/users/<int:user_id>/activate')
+class ActivateUser(Resource):
+    @jwt_required()
+    @role_required("admin")
+    @limiter.limit("20 per hour")
+    def patch(self, user_id):
+        """Activate user account"""
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
+        
+        user.status = "active"
+        db.session.commit()
+        
+        logger.info(f"User activated by admin: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
+        
+        return {
             "id": user.id,
             "name": user.name,
             "username": user.username,
             "role": user.role,
             "status": user.status
-        }
-    }), 200
+        }, 200
 
+@admin_ns.route('/users/<int:user_id>/deactivate')
+class DeactivateUser(Resource):
+    @jwt_required()
+    @role_required("admin")
+    @limiter.limit("20 per hour")
+    def patch(self, user_id):
+        """Deactivate user account"""
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
+        
+        user.status = "inactive"
+        db.session.commit()
+        
+        logger.info(f"User deactivated by admin: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
+        
+        return {
+            "id": user.id,
+            "name": user.name,
+            "username": user.username,
+            "role": user.role,
+            "status": user.status
+        }, 200
 
-@admin_bp.route("/users/<int:user_id>/deactivate", methods=["PATCH"])
-@limiter.limit("20 per hour")  # max 20 deactivations per hour per IP
-@jwt_required()
-@role_required("admin")
-@active_required
-def deactivate_user(user_id):
-    """
-    Deactivate a user account (set status to 'inactive').
-    
-    This prevents the user from logging in while preserving their account data.
-    The user can be reactivated later by an admin.
-    
-    Args:
-        user_id (int): The ID of the user to deactivate
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON response confirming deactivation or current status
-    """
-    # Query user by ID from database
-    user = User.query.get(user_id)
-    
-    # Check if user exists
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-    
-    # Check if user is already inactive
-    if user.status == "inactive":
-        return jsonify({"message": f"User {user.username} is already inactive"}), 200
-    
-    # Set user status to inactive
-    user.status = "inactive"
-    db.session.commit()
-    return jsonify({"message": f"User {user.username} deactivated"}), 200
-
-# ----------------------- DELETE ROUTES (Delete Operations) -----------------------
-
-@admin_bp.route("/users/<int:user_id>", methods=["DELETE"])
-@limiter.limit("5 per hour")  # max 5 deletions per hour per IP
-@jwt_required()
-@role_required("admin")
-@active_required
-def delete_user(user_id):
-    """
-    Permanently delete a user account (hard delete).
-    
-    This completely removes the user and all associated data from the database.
-    This action cannot be undone.
-    
-    Args:
-        user_id (int): The ID of the user to delete
-    
-    Requires:
-        Admin role and active account status
-        Authorization header with valid access token
-    
-    Returns:
-        JSON response confirming deletion
-    
-    Edge Cases:
-        - Prevents admin from deleting themselves
-        - Validates user exists before deletion
-    """
-    # Get current admin user ID for self-deletion check
-    admin_id = int(get_jwt_identity())
-    
-    # Prevent admin from deleting themselves
-    if user_id == admin_id:
-        return jsonify({"error": "Cannot delete your own account"}), 400
-    
-    # Query user by ID from database
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-    
-    # Permanently delete user from database
-    deleted_username = user.username
-    deleted_user_id = user.id
-    admin_user = User.query.get(admin_id)
-    
-    db.session.delete(user)
-    db.session.commit()
-    
-    logger.warning(f"User deleted permanently: {deleted_username} (ID: {deleted_user_id}) by admin: {admin_user.username} (ID: {admin_id}) from IP: {request.remote_addr}")
-    return jsonify({"message": f"User {deleted_username} deleted successfully"}), 200
+@admin_ns.route('/create-reset-token/<int:user_id>')
+class CreateResetToken(Resource):
+    @jwt_required()
+    @role_required("admin")
+    def get(self, user_id):
+        """Generate password reset token for user"""
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
+        
+        # Generate secure token
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(minutes=15)
+        
+        # Create reset token record
+        reset_token = PasswordResetToken(
+            user_id=user.id,
+            token=token,
+            expires_at=expires_at,
+            is_used=False
+        )
+        
+        db.session.add(reset_token)
+        db.session.commit()
+        
+        logger.info(f"Password reset token generated for user: {user.username} (ID: {user.id}) by admin from IP: {request.remote_addr}")
+        
+        return {
+            "token": token,
+            "expires_at": expires_at.isoformat() + "Z",
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "username": user.username,
+                "role": user.role,
+                "status": user.status
+            }
+        }, 200

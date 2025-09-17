@@ -13,6 +13,7 @@ A secure role-based access control (RBAC) system built with **Flask**, **Postgre
 - **Role-Based Access Control** - Admin and user role management
 - **Refresh Token System** - Secure token refresh mechanism
 - **Comprehensive Logging** - Enterprise-grade audit trails and security monitoring
+- **Flask-RESTX Integration** - Automatic Swagger UI documentation with interactive testing
 
 ## Rate Limiting
 
@@ -244,6 +245,7 @@ Register a new user account.
 - At least one letter
 - At least one number
 - No special characters
+- **Case-insensitive** - usernames are automatically converted to lowercase
 
 **Password Requirements:**
 - Minimum 6 characters
@@ -254,6 +256,21 @@ Register a new user account.
 **Responses:**
 - `201 Created` - User registered successfully
 - `400 Bad Request` - Validation errors or username already exists
+
+**Error Response Examples:**
+```json
+{
+  "error": "Missing required fields",
+  "missing_fields": ["name", "username"],
+  "required_fields": ["name", "username", "password", "confirm_password"]
+}
+```
+
+```json
+{
+  "error": "Username already exist"
+}
+```
 
 #### Login
 **POST** `/auth/login`
@@ -276,6 +293,22 @@ Authenticate user and receive JWT token.
   "message": "Login successful",
   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
   "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Missing fields or invalid credentials
+- `403 Forbidden` - Account deactivated
+
+```json
+{
+  "error": "Invalid username or password"
+}
+```
+
+```json
+{
+  "error": "Account is deactivated. Please contact admin."
 }
 ```
 
@@ -697,16 +730,78 @@ Generate a password reset token for a specific user (admin-only).
 - Include `Authorization: Bearer <token>` header for protected routes
 - Get a new token via `/auth/login` when it expires
 
-## Improvements to be done
-1. swagger
+## API Documentation
 
+### Swagger UI
+Interactive API documentation is available at:
+- **Swagger UI**: `http://127.0.0.1:5000/swagger-ui/`
+
+The Swagger documentation provides:
+- Interactive API testing
+- Request/response examples
+- Authentication testing with JWT tokens
+- Model schemas and validation
+- Error code documentation
+
+## Error Handling
+
+AccessVault implements comprehensive error handling with detailed error messages and proper HTTP status codes:
+
+### Error Response Format
+All error responses follow a consistent JSON format:
+```json
+{
+  "error": "Error message description"
+}
+```
+
+### Common Error Types
+
+#### Validation Errors (400 Bad Request)
+```json
+{
+  "error": "Missing required fields",
+  "missing_fields": ["username", "password"],
+  "required_fields": ["username", "password"]
+}
+```
+
+#### Authentication Errors (401 Unauthorized)
+```json
+{
+  "error": "Invalid username or password"
+}
+```
+
+#### Authorization Errors (403 Forbidden)
+```json
+{
+  "error": "Account is deactivated. Please contact admin."
+}
+```
+
+#### Not Found Errors (404 Not Found)
+```json
+{
+  "error": "User not found"
+}
+```
+
+#### Rate Limit Errors (429 Too Many Requests)
+```json
+{
+  "error": "Rate limit exceeded. Try again later."
+}
+```
 
 ## Project flow
-1. Project setup (database, JWT), Health check
-2. Logging setup (logger.py)
-3. Global error handling
-4. Authentication routes (login, registration, password reset)
-5. User routes (profile management)
-6. Admin routes (user management, password reset tokens)
-7. Refresh token and rate limiting
-8. Swagger documentation
+1. Initialize Flask app, DB (SQLAlchemy), JWT, health check
+2. logging: add centralized logging with logger.py
+3. errors: implement global error handling middleware
+4. auth: add registration route and login route with JWT
+5. auth: add refresh token flow
+6. security: add rate limiting to auth routes
+7. user: add profile management APIs (view/update)
+8. admin: add user management APIs
+9. admin: add password reset token generation
+10. swagger: document all models & responses
