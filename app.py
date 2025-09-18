@@ -59,9 +59,10 @@ def create_app():
     return app
 
 
+# Create the Flask application instance for Gunicorn
+app = create_app()
+
 # Run the server only if this file is executed directly
 if __name__ == "__main__":
-    # Create app instance and run in debug mode
-    # Note: debug=True should be disabled in production
-    app = create_app()
+    # For local development
     app.run(debug=False)
