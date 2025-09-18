@@ -13,14 +13,8 @@ Default admin credentials:
 - Status: active
 """
 
-import sys
-import os
-
-# Add the parent directory to the Python path so we can import app
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from extensions import bcrypt, db
-from models import User
+from src.extensions import bcrypt, db
+from src.models import User
 from app import create_app
 
 # Create Flask app instance
@@ -32,6 +26,12 @@ with app.app_context():
     username = "admin66"
     raw_password = "Admin@123"
     name = "Administrator"
+
+    # Check if admin user already exists
+    existing_admin = User.query.filter_by(username=username).first()
+    if existing_admin:
+        print(f"Admin user '{username}' already exists!")
+        exit("Skipping admin creation or change username and password.")
 
     # Hash the password using bcrypt for secure storage
     hashed_pwd = bcrypt.generate_password_hash(raw_password).decode("utf-8")

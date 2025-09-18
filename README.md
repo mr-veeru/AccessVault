@@ -1,12 +1,12 @@
-# AccessVault 
+# AccessVault - Secure User Management API
 
-A secure role-based access control (RBAC) system built with **Flask**, **PostgreSQL**, and **JWT Authentication**. AccessVault provides a robust API for user management, authentication, and authorization with support for different roles(user and admin).
+A comprehensive Flask-based API for user authentication, authorization, and management with JWT tokens, role-based access control, rate limiting, and comprehensive logging. Built with **Flask**, **PostgreSQL**, **JWT Authentication**, and **Flask-RESTX** for automatic API documentation.
 
 ## Features
 - **JWT Authentication** - Secure token-based authentication
 - **Password Security** - bcrypt hashing with strong password policies
 - **Password Reset System** - Admin-generated secure reset tokens with expiration
-- **Modular Architecture** - Blueprinted REST API for scalability
+- **Modular Architecture** - Professional package structure with organized modules for scalability
 - **Database Integration** - SQLAlchemy ORM with PostgreSQL support
 - **Rate Limiting** - Comprehensive protection against abuse and DDoS attacks
 - **Health Monitoring** - Production-ready health check endpoints
@@ -73,45 +73,31 @@ pip install -r requirements.txt
 ```
 
 ### 3. Configure Environment
-Create a `config.py` file in the project root with your database credentials:
+Copy the environment template and configure your settings:
 
-```python
-import os
-from datetime import timedelta
-
-# Flask secret keys
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
-JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-jwt-secret-here")
-JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
-
-# Database connection (replace with your PostgreSQL URL)
-SQLALCHEMY_DATABASE_URI = (
-    "postgresql://username:password@host:port/database_name"
-    "?sslmode=require"
-)
-SQLALCHEMY_TRACK_MODIFICATIONS = False
+```bash
+# Copy the example file
+copy .env.example .env
 ```
 
+Edit `.env` file with your actual values:
+
 **For Supabase users:**
-```python
-SQLALCHEMY_DATABASE_URI = (
-    "postgresql://postgres.xxxxx:your-password"
-    "@aws-0-region.pooler.supabase.com:6543/postgres"
-    "?sslmode=require"
-)
+```bash
+SQLALCHEMY_DATABASE_URI=postgresql://postgres.xxxxx:your-password@aws-0-region.pooler.supabase.com:6543/postgres?sslmode=require
 ```
 
 ### 4. Initialize Database
 Create the database tables:
 ```bash
-python scripts/init_db.py
+python -m scripts.init_db
 ```
-This creates the `users` table based on the User model.
+This creates the `users` and `password_reset_tokens` tables based on the models.
 
 ### 5. Create Admin User (Optional)
 Create an admin user for testing:
 ```bash
-python scripts/create_admin.py
+python -m scripts.create_admin
 ```
 **Default admin credentials:**
 - name: `Administrator`
@@ -125,32 +111,69 @@ Start the Flask development server:
 ```bash
 python app.py
 ```
-The API will be available at `http://127.0.0.1:5000`
+The API will be available at:
+- **API Base URL**: `http://127.0.0.1:5000`
+- **Swagger UI**: `http://127.0.0.1:5000/swagger-ui/`
+- **Health Check**: `http://127.0.0.1:5000/api/health`
 
 ## Project Structure
 ```
 AccessVault/
-├── app.py              # Flask app factory and main entry point
-├── config.py           # Application configuration and database settings
-├── decorators.py       # Role-based access control decorators
-├── extensions.py       # Flask extensions (db, jwt, bcrypt)
-├── models.py           # SQLAlchemy database models
-├── logger.py           # Logging configuration and setup
-├── routes/
-│   ├── health.py       # Health check (Checks database connectivity, JWT configuration, and Flask setup)
-│   ├── admin.py        # Admin routes (user management, statistics)
-│   ├── auth.py         # Authentication routes (register, login)
-│   └── profile.py      # User profile routes (profile, updates)
-├── scripts/
-│   ├── create_admin.py # Script to create initial admin user
-│   └── init_db.py      # Database initialization script
-├── logs/               # Application logs (auto-generated, git-ignored)
-│   └── accessvault.log # Current log file with daily rotation
-├── requirements.txt    # Python package dependencies
-├── .env                # Environment variables (git-ignored)
-├── .gitignore          # Git ignore patterns
-└── README.md           # Project documentation
+├── app.py                 # Main application entry point and Flask app factory
+├── src/                   # Core application package
+│   ├── __init__.py        # Global error handlers and error handling registration
+│   ├── models.py          # SQLAlchemy database models (User, PasswordResetToken)
+│   ├── extensions.py      # Flask extensions (db, jwt, bcrypt, limiter, api)
+│   ├── decorators.py      # Role-based access control decorators
+│   ├── logger.py          # Logging configuration and setup
+│   ├── config.py          # Application configuration and database settings
+│   └── routes/            # API routes organized by functionality
+│       ├── __init__.py    # Route package initialization
+│       ├── health.py      # Health check namespace (Flask-RESTX)
+│       ├── admin.py       # Admin routes namespace (user management, statistics)
+│       ├── auth.py        # Authentication routes namespace (register, login, refresh)
+│       └── profile.py     # User profile routes namespace (profile, updates)
+├── scripts/               # Database and utility scripts
+│   ├── create_admin.py    # Script to create initial admin user
+│   └── init_db.py         # Database initialization script
+├── logs/                  # Application logs (auto-generated, git-ignored)
+│   └── accessvault.log    # Current log file with daily rotation
+├── requirements.txt       # Python package dependencies
+├── .env                   # Environment variables (git-ignored)
+├── .env.example           # Environment variables template (git-tracked)
+├── .gitignore             # Git ignore patterns
+└── README.md              # Project documentation
 ```
+
+## Architecture
+
+AccessVault follows a modular architecture with clear separation of concerns:
+
+### Core Components
+
+- **`app.py`**: Main entry point and Flask application factory
+- **`src/`**: Core application package containing all business logic
+- **`src/extensions.py`**: Flask extensions initialization (db, jwt, bcrypt, limiter, api)
+- **`src/config.py`**: Configuration management with environment variables
+- **`src/models.py`**: SQLAlchemy database models
+- **`src/decorators.py`**: Custom decorators for access control
+- **`src/logger.py`**: Logging configuration with rotation
+- **`src/routes/`**: API routes organized by functionality using Flask-RESTX namespaces
+
+### Route Organization
+
+- **`health_ns`**: Health check endpoints for monitoring
+- **`auth_ns`**: Authentication operations (register, login, refresh, password reset)
+- **`profile_ns`**: User profile management (view, update, password change, deactivate)
+- **`admin_ns`**: Administrative operations (user management, statistics, password reset tokens)
+
+### Key Design Patterns
+
+- **Application Factory**: Flask app creation with `create_app()` function
+- **Namespace Organization**: Flask-RESTX namespaces for API documentation
+- **Decorator Pattern**: Custom decorators for authentication and authorization
+- **Error Handling**: Global error handlers with consistent JSON responses
+- **Rate Limiting**: Endpoint-specific and global rate limiting with Redis support
 
 ## API Reference
 
@@ -162,12 +185,18 @@ AccessVault/
 **Response:**
 ```json
 {
-  "message": "AccessVault API is running 🚀"
+  "message": "AccessVault API is running 🚀",
+  "status": "healthy",
+  "version": "1.0.0",
+  "endpoints": {
+    "health": "/api/health",
+    "swagger": "/swagger-ui/"
+  }
 }
 ```
 
 #### Comprehensive Health Check
-**GET** `/health`
+**GET** `/api/health`
 
 **Description:** Detailed health check for monitoring and load balancers. Checks database connectivity, JWT configuration, and Flask setup.
 
@@ -224,7 +253,7 @@ AccessVault/
 ### Authentication
 
 #### Register User
-**POST** `/auth/register`
+**POST** `/api/auth/register`
 
 Register a new user account.
 
@@ -273,7 +302,7 @@ Register a new user account.
 ```
 
 #### Login
-**POST** `/auth/login`
+**POST** `/api/auth/login`
 
 Authenticate user and receive JWT token.
 
@@ -313,7 +342,7 @@ Authenticate user and receive JWT token.
 ```
 
 #### Refresh Token
-**POST** `/auth/refresh`
+**GET** `/api/auth/refresh`
 
 Generate a new access token using a valid refresh token.
 
@@ -337,7 +366,7 @@ Authorization: Bearer <refresh_token>
 - **Refresh Token**: 7 days (configurable)
 
 #### Password Reset
-**POST** `/auth/reset-password`
+**POST** `/api/auth/reset-password`
 
 Reset user password using a valid reset token (generated by admin).
 
@@ -370,7 +399,7 @@ Reset user password using a valid reset token (generated by admin).
 ### Profile Management
 
 #### Get Profile
-**GET** `/profile/`
+**GET** `/api/profile/`
 
 Get the current user's profile information.
 
@@ -391,7 +420,7 @@ Authorization: Bearer <access_token>
 ```
 
 #### Update Profile
-**PATCH** `/profile/`
+**PATCH** `/api/profile/`
 
 Update user's display name and/or username.
 
@@ -411,7 +440,7 @@ Authorization: Bearer <access_token>
 **Note:** You can update either `name`, `username`, or both. At least one field is required.
 
 #### Update Password
-**PATCH** `/profile/password`
+**PATCH** `/api/profile/password`
 
 Update user's password.
 
@@ -432,7 +461,7 @@ Authorization: Bearer <access_token>
 ```
 
 #### Deactivate Account
-**PATCH** `/profile/deactivate`
+**PATCH** `/api/profile/deactivate`
 
 Deactivate own account (soft delete).
 
@@ -458,7 +487,7 @@ Authorization: Bearer <access_token>
 All admin routes require `Authorization: Bearer <access_token>` header with admin role.
 
 #### System Statistics
-**GET** `/admin/stats`
+**GET** `/api/admin/stats`
 
 Get comprehensive system statistics for admin dashboard.
 
@@ -477,7 +506,7 @@ Get comprehensive system statistics for admin dashboard.
 ```
 
 #### Get All Users
-**GET** `/admin/users`
+**GET** `/api/admin/users`
 
 Retrieve the list of all users in the system.
 
@@ -502,7 +531,7 @@ Retrieve the list of all users in the system.
 ```
 
 #### Get Active Users
-**GET** `/admin/users/active`
+**GET** `/api/admin/users/active`
 
 Retrieve all users with active status.
 
@@ -523,7 +552,7 @@ Retrieve all users with active status.
 ```
 
 #### Get Inactive Users
-**GET** `/admin/users/inactive`
+**GET** `/api/admin/users/inactive`
 
 Retrieve all users with inactive status.
 
@@ -544,7 +573,7 @@ Retrieve all users with inactive status.
 ```
 
 #### Search Users by Username
-**GET** `/admin/users/search/username/<username>`
+**GET** `/api/admin/users/search/username/<username>`
 
 Search for users by username (case-insensitive partial match).
 
@@ -567,14 +596,14 @@ Search for users by username (case-insensitive partial match).
 ```
 
 #### Search Users by Name
-**GET** `/admin/users/search/name/<name>`
+**GET** `/api/admin/users/search/name/<name>`
 
 Search for users by full name (case-insensitive partial match).
 
 **Example:** `/admin/users/search/name/Veerendra`
 
 #### Get User by ID
-**GET** `/admin/users/<user_id>`
+**GET** `/api/admin/users/<user_id>`
 
 Get specific user details by ID.
 
@@ -590,7 +619,7 @@ Get specific user details by ID.
 ```
 
 #### Create User
-**POST** `/admin/users`
+**POST** `/api/admin/users`
 
 Create a new user with default password.
 
@@ -621,7 +650,7 @@ Create a new user with default password.
 ```
 
 #### Update User
-**PATCH** `/admin/users/<user_id>`
+**PATCH** `/api/admin/users/<user_id>`
 
 Update user details (name, username, role).
 
@@ -637,7 +666,7 @@ Update user details (name, username, role).
 **Note:** You can update any combination of fields. At least one field is required.
 
 #### Activate User
-**PATCH** `/admin/users/<user_id>/activate`
+**PATCH** `/api/admin/users/<user_id>/activate`
 
 Activate a user account (set status to 'active').
 
@@ -658,7 +687,7 @@ Activate a user account (set status to 'active').
 ```
 
 #### Deactivate User
-**PATCH** `/admin/users/<user_id>/deactivate`
+**PATCH** `/api/admin/users/<user_id>/deactivate`
 
 Deactivate a user account (set status to 'inactive').
 
@@ -672,7 +701,7 @@ Deactivate a user account (set status to 'inactive').
 ```
 
 #### Delete User
-**DELETE** `/admin/users/<user_id>`
+**DELETE** `/api/admin/users/<user_id>`
 
 Permanently delete a user account (hard delete).
 
@@ -690,7 +719,7 @@ Permanently delete a user account (hard delete).
 ```
 
 #### Create Password Reset Token
-**GET** `/admin/create-reset-token/<user_id>`
+**GET** `/api/admin/create-reset-token/<user_id>`
 
 Generate a password reset token for a specific user (admin-only).
 
@@ -726,9 +755,16 @@ Generate a password reset token for a specific user (admin-only).
 - For Supabase, ensure `?sslmode=require` is included in the URL
 
 **Token Issues:**
-- JWT tokens expire after 1 hour (configurable in `config.py`)
+- JWT tokens expire after 1 hour (configurable in `app/config.py`)
 - Include `Authorization: Bearer <token>` header for protected routes
 - Get a new token via `/auth/login` when it expires
+
+**Environment Configuration Issues:**
+- Ensure `.env` file exists (copy from `.env.example`)
+- Check that all required environment variables are set
+- Verify database connection string format is correct
+- Make sure `.env` file is in the project root directory
+- For Supabase, ensure `?sslmode=require` is included in the URL
 
 ## API Documentation
 
