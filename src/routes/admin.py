@@ -9,7 +9,7 @@ Uses Flask-RESTX for automatic Swagger documentation.
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from src.models import User, PasswordResetToken
+from src.models import User, PasswordResetToken, RefreshToken
 from src.decorators import role_required
 from src.extensions import db, bcrypt, limiter, api
 from src.logger import logger
@@ -444,4 +444,182 @@ class CreateResetToken(Resource):
                 "role": user.role,
                 "status": user.status
             }
+        }, 200
+
+
+@admin_ns.route('/refresh-tokens')
+class RefreshTokens(Resource):
+    @jwt_required()
+    @role_required("admin")
+    def get(self):
+        """Get all refresh tokens with pagination"""
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 20, type=int)
+        user_id = request.args.get('user_id', type=int)
+        
+        query = RefreshToken.query
+        
+        if user_id:
+            query = query.filter_by(user_id=user_id)
+        
+        # Order by created_at descending (newest first)
+        query = query.order_by(RefreshToken.created_at.desc())
+        
+        # Paginate results
+        tokens = query.paginate(
+            page=page, 
+            per_page=per_page, 
+            error_out=False
+        )
+        
+        return {
+            "tokens": [
+                {
+                    "id": token.id,
+                    "user_id": token.user_id,
+                    "token": token.token[:8] + "...",  # Show only first 8 chars
+                    "device_info": token.device_info,
+                    "ip_address": token.ip_address,
+                    "created_at": token.created_at.isoformat() + "Z",
+                    "expires_at": token.expires_at.isoformat() + "Z",
+                    "is_revoked": token.is_revoked,
+                    "is_expired": token.expires_at < datetime.utcnow()
+                }
+                for token in tokens.items
+            ],
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": tokens.total,
+                "pages": tokens.pages,
+                "has_next": tokens.has_next,
+                "has_prev": tokens.has_prev
+            }
+        }, 200
+
+
+@admin_ns.route('/refresh-tokens/<int:token_id>/revoke')
+class RevokeRefreshToken(Resource):
+    @jwt_required()
+    @role_required("admin")
+    def patch(self, token_id):
+        """Revoke a specific refresh token"""
+        token = RefreshToken.query.get(token_id)
+        if not token:
+            return {"error": "Refresh token not found"}, 404
+        
+        if token.is_revoked:
+            return {"error": "Token is already revoked"}, 400
+        
+        token.is_revoked = True
+        db.session.commit()
+        
+        logger.info(f"Refresh token revoked by admin: {token.token[:8]}... for user {token.user_id} from IP: {request.remote_addr}")
+        
+        return {
+            "message": "Refresh token revoked successfully",
+            "token_id": token.id,
+            "user_id": token.user_id
+        }, 200
+
+
+@admin_ns.route('/refresh-tokens/cleanup')
+class CleanupRefreshTokens(Resource):
+    @jwt_required()
+    @role_required("admin")
+    def post(self):
+        """Clean up expired and revoked refresh tokens"""
+        try:
+            # Delete expired tokens
+            expired_count = RefreshToken.query.filter(
+                RefreshToken.expires_at < datetime.utcnow()
+            ).delete()
+            
+            # Delete revoked tokens older than 24 hours
+            revoked_count = RefreshToken.query.filter(
+                RefreshToken.is_revoked == True,
+                RefreshToken.created_at < datetime.utcnow() - timedelta(hours=24)
+            ).delete()
+            
+            db.session.commit()
+            
+            total_cleaned = expired_count + revoked_count
+            
+            logger.info(f"Token cleanup completed by admin: {expired_count} expired, {revoked_count} revoked tokens removed from IP: {request.remote_addr}")
+            
+            return {
+                "message": "Token cleanup completed successfully",
+                "expired_tokens_removed": expired_count,
+                "revoked_tokens_removed": revoked_count,
+                "total_cleaned": total_cleaned
+            }, 200
+            
+        except Exception as e:
+            logger.error(f"Token cleanup failed: {str(e)}")
+            db.session.rollback()
+            return {"error": f"Token cleanup failed: {str(e)}"}, 500
+
+
+@admin_ns.route('/users/<int:user_id>/refresh-tokens')
+class UserRefreshTokens(Resource):
+    @jwt_required()
+    @role_required("admin")
+    def get(self, user_id):
+        """Get all refresh tokens for a specific user"""
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
+        
+        tokens = RefreshToken.query.filter_by(user_id=user_id).order_by(RefreshToken.created_at.desc()).all()
+        
+        return {
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "username": user.username
+            },
+            "tokens": [
+                {
+                    "id": token.id,
+                    "token": token.token[:8] + "...",
+                    "device_info": token.device_info,
+                    "ip_address": token.ip_address,
+                    "created_at": token.created_at.isoformat() + "Z",
+                    "expires_at": token.expires_at.isoformat() + "Z",
+                    "is_revoked": token.is_revoked,
+                    "is_expired": token.expires_at < datetime.utcnow()
+                }
+                for token in tokens
+            ],
+            "total_tokens": len(tokens),
+            "active_tokens": len([t for t in tokens if not t.is_revoked and t.expires_at >= datetime.utcnow()])
+        }, 200
+
+
+@admin_ns.route('/users/<int:user_id>/revoke-all-tokens')
+class RevokeAllUserTokens(Resource):
+    @jwt_required()
+    @role_required("admin")
+    def patch(self, user_id):
+        """Revoke all refresh tokens for a specific user"""
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
+        
+        # Revoke all active tokens for this user
+        revoked_count = RefreshToken.query.filter_by(
+            user_id=user_id, 
+            is_revoked=False
+        ).update({
+            'is_revoked': True
+        })
+        
+        db.session.commit()
+        
+        logger.info(f"All refresh tokens revoked for user: {user.username} (ID: {user_id}) by admin from IP: {request.remote_addr}")
+        
+        return {
+            "message": f"All refresh tokens revoked for user {user.username}",
+            "user_id": user_id,
+            "tokens_revoked": revoked_count
         }, 200

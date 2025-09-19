@@ -39,6 +39,41 @@ class User(db.Model):
         return f"<User {self.username}>"
     
 
+class RefreshToken(db.Model):
+    """
+    Refresh Token model for secure token rotation and device binding.
+    
+    Attributes:
+        id (int): Primary key, auto-incrementing token ID
+        user_id (int): Foreign key to User model
+        token (str): Unique refresh token (max 128 characters)
+        device_info (str): Device/browser information for tracking
+        ip_address (str): IP address when token was created
+        created_at (datetime): Date and time the token was created
+        expires_at (datetime): Expiration date and time for the token
+        is_revoked (bool): Indicates if the token has been revoked (default: False)
+    """
+    __tablename__ = "refresh_tokens"
+
+    # Primary key - auto-incrementing integer
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Foreign key to User model
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+
+    # Refresh token fields
+    token = db.Column(db.String(128), unique=True, nullable=False)
+    device_info = db.Column(db.String(200), nullable=True)  # Browser/device info
+    ip_address = db.Column(db.String(45), nullable=False)   # IPv4/IPv6 support
+    created_at = db.Column(db.DateTime, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    is_revoked = db.Column(db.Boolean, default=False)
+
+    def __repr__(self):
+        """String representation of the RefreshToken object for debugging."""
+        return f"<RefreshToken {self.token[:8]}... for User {self.user_id}>"
+
+
 class PasswordResetToken(db.Model):
     """
     Password Reset Token model representing password reset tokens in the system.

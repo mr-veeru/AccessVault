@@ -3,15 +3,16 @@
 A comprehensive Flask-based API for user authentication, authorization, and management with JWT tokens, role-based access control, rate limiting, and comprehensive logging. Built with **Flask**, **PostgreSQL**, **JWT Authentication**, and **Flask-RESTX** for automatic API documentation.
 
 ## Features
-- **JWT Authentication** - Secure token-based authentication
+- **JWT Authentication** - Secure token-based authentication with refresh token rotation
 - **Password Security** - bcrypt hashing with strong password policies
 - **Password Reset System** - Admin-generated secure reset tokens with expiration
+- **Refresh Token Management** - Database-stored tokens with device/IP binding and automatic cleanup
 - **Modular Architecture** - Professional package structure with organized modules for scalability
 - **Database Integration** - SQLAlchemy ORM with PostgreSQL support
 - **Rate Limiting** - Comprehensive protection against abuse and DDoS attacks
 - **Health Monitoring** - Production-ready health check endpoints
 - **Role-Based Access Control** - Admin and user role management
-- **Refresh Token System** - Secure token refresh mechanism
+- **Token Cleanup** - Automatic removal of expired and used tokens
 - **Comprehensive Logging** - Enterprise-grade audit trails and security monitoring
 - **Flask-RESTX Integration** - Automatic Swagger UI documentation with interactive testing
 
@@ -344,7 +345,7 @@ Authenticate user and receive JWT token.
 #### Refresh Token
 **GET** `/api/auth/refresh`
 
-Generate a new access token using a valid refresh token.
+Generate new access and refresh tokens using current refresh token (token rotation).
 
 **Rate Limit**: 10 refresh attempts per minute per IP
 
@@ -356,14 +357,39 @@ Authorization: Bearer <refresh_token>
 **Response:**
 ```json
 {
-  "message": "New access token generated",
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+  "message": "New access token and refresh token generated",
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "new_refresh_token_value"
 }
 ```
+
+**Token Rotation:**
+- Old refresh token is automatically revoked
+- New refresh token is generated and stored in database
+- Device and IP information is tracked for security
 
 **Token Expiration:**
 - **Access Token**: 15 minutes (configurable)
 - **Refresh Token**: 7 days (configurable)
+
+#### Logout
+**POST** `/api/auth/logout`
+
+Logout user by revoking all refresh tokens.
+
+**Rate Limit**: 10 logout attempts per minute per IP
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
 
 #### Password Reset
 **POST** `/api/auth/reset-password`
@@ -745,6 +771,126 @@ Generate a password reset token for a specific user (admin-only).
 3. User calls `/auth/reset-password` with token and new password
 4. Token is automatically invalidated after use
 
+#### Refresh Token Management
+
+**GET** `/api/admin/refresh-tokens`
+
+Get all refresh tokens with pagination and filtering.
+
+**Query Parameters:**
+- `page` (optional): Page number (default: 1)
+- `per_page` (optional): Items per page (default: 20)
+- `user_id` (optional): Filter by specific user ID
+
+**Response:**
+```json
+{
+  "tokens": [
+    {
+      "id": 1,
+      "user_id": 2,
+      "token": "abc12345...",
+      "device_info": "Mozilla/5.0...",
+      "ip_address": "192.168.1.100",
+      "created_at": "2024-01-15T10:30:00Z",
+      "expires_at": "2024-01-22T10:30:00Z",
+      "is_revoked": false,
+      "is_expired": false
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 5,
+    "pages": 1,
+    "has_next": false,
+    "has_prev": false
+  }
+}
+```
+
+**PATCH** `/api/admin/refresh-tokens/<token_id>/revoke`
+
+Revoke a specific refresh token.
+
+**Response:**
+```json
+{
+  "message": "Refresh token revoked successfully",
+  "token_id": 1,
+  "user_id": 2
+}
+```
+
+**POST** `/api/admin/refresh-tokens/cleanup`
+
+Clean up expired and revoked refresh tokens.
+
+**Response:**
+```json
+{
+  "message": "Token cleanup completed successfully",
+  "expired_tokens_removed": 3,
+  "revoked_tokens_removed": 2,
+  "total_cleaned": 5
+}
+```
+
+**GET** `/api/admin/users/<user_id>/refresh-tokens`
+
+Get all refresh tokens for a specific user.
+
+**Response:**
+```json
+{
+  "user": {
+    "id": 2,
+    "name": "John Doe",
+    "username": "johndoe"
+  },
+  "tokens": [...],
+  "total_tokens": 3,
+  "active_tokens": 2
+}
+```
+
+**PATCH** `/api/admin/users/<user_id>/revoke-all-tokens`
+
+Revoke all refresh tokens for a specific user.
+
+**Response:**
+```json
+{
+  "message": "All refresh tokens revoked for user johndoe",
+  "user_id": 2,
+  "tokens_revoked": 3
+}
+```
+
+## Token Cleanup
+
+### Automatic Cleanup
+
+The system includes automatic token cleanup to maintain database hygiene:
+
+**What Gets Cleaned:**
+- Expired refresh tokens (7+ days old)
+- Revoked refresh tokens (24+ hours old)
+- Expired password reset tokens (1+ hour old)
+- Used password reset tokens (24+ hours old)
+
+**Manual Cleanup:**
+```bash
+python scripts/cleanup_tokens.py
+```
+
+**Scheduled Cleanup:**
+Set up a cron job to run cleanup automatically:
+```bash
+# Every 6 hours
+0 */6 * * * cd /path/to/AccessVault && python scripts/cleanup_tokens.py
+```
+
 ## Troubleshooting
 
 ### Common Issues
@@ -755,9 +901,12 @@ Generate a password reset token for a specific user (admin-only).
 - For Supabase, ensure `?sslmode=require` is included in the URL
 
 **Token Issues:**
-- JWT tokens expire after 1 hour (configurable in `app/config.py`)
+- Access tokens expire after 15 minutes (configurable in `src/config.py`)
+- Refresh tokens expire after 7 days (configurable in `src/config.py`)
 - Include `Authorization: Bearer <token>` header for protected routes
-- Get a new token via `/auth/login` when it expires
+- Use refresh token to get new access token via `/auth/refresh`
+- Old refresh tokens are automatically revoked (token rotation)
+- Use `/auth/logout` to revoke all tokens for a user
 
 **Environment Configuration Issues:**
 - Ensure `.env` file exists (copy from `.env.example`)

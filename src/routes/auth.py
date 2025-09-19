@@ -9,11 +9,12 @@ Uses Flask-RESTX for automatic Swagger documentation.
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from src.extensions import db, bcrypt, limiter, api
-from src.models import User, PasswordResetToken
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
+from src.models import User, PasswordResetToken, RefreshToken
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 from src.logger import logger
 import re
-from datetime import datetime
+import secrets
+from datetime import datetime, timedelta
 
 # Create authentication namespace
 auth_ns = Namespace('auth', description='Authentication operations')
@@ -171,14 +172,33 @@ class Login(Resource):
             identity=str(user.id),
             additional_claims={"role": user.role, "status": user.status}
         )
-        refresh_token = create_refresh_token(identity=str(user.id))
+        
+        # Generate refresh token and store in database
+        refresh_token_value = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(days=7)  # 7 days expiration
+        
+        # Get device info from User-Agent header
+        device_info = request.headers.get('User-Agent', 'Unknown Device')[:200]
+        
+        # Store refresh token in database
+        refresh_token = RefreshToken(
+            user_id=user.id,
+            token=refresh_token_value,
+            device_info=device_info,
+            ip_address=request.remote_addr,
+            created_at=datetime.utcnow(),
+            expires_at=expires_at
+        )
+        
+        db.session.add(refresh_token)
+        db.session.commit()
 
         # Return success response with both tokens
         logger.info(f"Login successful for user: {username} (ID: {user.id}) from IP: {request.remote_addr}")
         return {
             "message": "Login successful",
             "access_token": access_token,
-            "refresh_token": refresh_token,
+            "refresh_token": refresh_token_value,
         }, 200
 
 @auth_ns.route('/refresh')
@@ -194,23 +214,60 @@ class Refresh(Resource):
             logger.warning(f"Token refresh failed - user not found or inactive: {user_id} from IP: {request.remote_addr}")
             return {"error": "User not found or inactive"}, 404
 
+        # Get current refresh token from JWT
+        current_jwt = get_jwt()
+        current_token = current_jwt.get('jti')  # JWT ID
+        
+        # Find the current refresh token in database
+        current_refresh_token = RefreshToken.query.filter_by(
+            user_id=user.id, 
+            token=current_token,
+            is_revoked=False
+        ).first()
+        
+        if not current_refresh_token:
+            logger.warning(f"Token refresh failed - invalid refresh token for user: {user.username} from IP: {request.remote_addr}")
+            return {"error": "Invalid refresh token"}, 401
+            
+        # Check if token is expired
+        if current_refresh_token.expires_at < datetime.utcnow():
+            logger.warning(f"Token refresh failed - expired refresh token for user: {user.username} from IP: {request.remote_addr}")
+            return {"error": "Refresh token expired"}, 401
+
+        # Revoke current refresh token (token rotation)
+        current_refresh_token.is_revoked = True
+
         # Generate new access token
         new_access_token = create_access_token(
             identity=str(user.id),
             additional_claims={"role": user.role, "status": user.status}
         )
 
-        # Generate new refresh token (refresh token rotation)
-        new_refresh_token = create_refresh_token(
-            identity=str(user.id),
-            additional_claims={"role": user.role, "status": user.status}
+        # Generate new refresh token and store in database
+        new_refresh_token_value = secrets.token_urlsafe(32)
+        expires_at = datetime.utcnow() + timedelta(days=7)
+        
+        # Get device info from User-Agent header
+        device_info = request.headers.get('User-Agent', 'Unknown Device')[:200]
+        
+        # Store new refresh token in database
+        new_refresh_token = RefreshToken(
+            user_id=user.id,
+            token=new_refresh_token_value,
+            device_info=device_info,
+            ip_address=request.remote_addr,
+            created_at=datetime.utcnow(),
+            expires_at=expires_at
         )
+        
+        db.session.add(new_refresh_token)
+        db.session.commit()
 
         logger.info(f"Tokens refreshed successfully for user: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
         return {
             "message": "New access token and refresh token generated",
             "access_token": new_access_token,
-            "refresh_token": new_refresh_token
+            "refresh_token": new_refresh_token_value
         }, 200
 
 @auth_ns.route('/reset-password')
@@ -266,3 +323,51 @@ class ResetPassword(Resource):
         db.session.commit()
         logger.info(f"Password reset successful for user: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
         return {"message": "Password reset successful"}, 200
+
+
+@auth_ns.route('/logout')
+class Logout(Resource):
+    @jwt_required()
+    @limiter.limit("10 per minute")
+    def post(self):
+        """Logout user by revoking all refresh tokens"""
+        user_id = get_jwt_identity()
+        user = User.query.get(int(user_id))
+        
+        if not user:
+            return {"error": "User not found"}, 404
+
+        # Revoke all active refresh tokens for this user
+        RefreshToken.query.filter_by(user_id=user.id, is_revoked=False).update({
+            'is_revoked': True
+        })
+        db.session.commit()
+
+        logger.info(f"User logged out successfully: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
+        return {"message": "Logged out successfully"}, 200
+
+
+def cleanup_expired_tokens():
+    """Clean up expired and revoked refresh tokens (call this periodically)"""
+    try:
+        # Delete expired tokens
+        expired_count = RefreshToken.query.filter(
+            RefreshToken.expires_at < datetime.utcnow()
+        ).delete()
+        
+        # Delete revoked tokens older than 24 hours
+        revoked_count = RefreshToken.query.filter(
+            RefreshToken.is_revoked == True,
+            RefreshToken.created_at < datetime.utcnow() - timedelta(hours=24)
+        ).delete()
+        
+        db.session.commit()
+        
+        if expired_count > 0 or revoked_count > 0:
+            logger.info(f"Token cleanup completed: {expired_count} expired, {revoked_count} revoked tokens removed")
+        
+        return expired_count + revoked_count
+    except Exception as e:
+        logger.error(f"Token cleanup failed: {str(e)}")
+        db.session.rollback()
+        return 0

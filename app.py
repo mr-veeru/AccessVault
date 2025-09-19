@@ -51,8 +51,8 @@ def create_app():
             "status": "healthy",
             "version": "1.0.0",
             "endpoints": {
-                "health": "/health",
-                "swagger": "/swagger-ui/"
+                "health": "/api/health",
+                "swagger": "/api/swagger-ui/"
             }
         })
     
