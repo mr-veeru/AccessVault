@@ -2,103 +2,122 @@
 Health Check Routes Module
 
 This module contains health check endpoints for the AccessVault API.
+Uses Flask-RESTX for automatic Swagger documentation.
 """
 
 from datetime import datetime, timezone
 import sys
 from sqlalchemy import text
-from flask import Blueprint, current_app as app
-from src.extensions import db
+from flask import current_app as app
+from src.extensions import db, api
 import flask
+from src.logger import logger
+from flask_restx import Namespace, fields, Resource
 
-# Create the health blueprint
-health_bp = Blueprint('health', __name__)
+# Create health check namespace
+health_ns = Namespace('health', description='Health check operations')
+
+# Response models for Swagger documentation
+health_check_model = health_ns.model('HealthCheck', {
+    'status': fields.String(description='Overall health status'),
+    'timestamp': fields.String(description='Check timestamp'),
+    'service': fields.String(description='Service name'),
+    'version': fields.String(description='API version'),
+    'checks': fields.Raw(description='Individual check results'),
+    'system': fields.Raw(description='System information')
+})
 
 
 # Health check endpoint
-@health_bp.route('/')
-def health_status():
-    """
-    Comprehensive health check for monitoring and load balancers.
-    Checks database connectivity, JWT configuration, and Flask setup.
-    """
-    health_status = {
-        "status": "healthy",
-        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
-        "service": "AccessVault API",
-        "version": "1.0.0",
-        "checks": {},
-        "system": {
-            "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-            "flask_version": flask.__version__,
-            "environment": app.config.get("ENV", "development"),
-            "debug_mode": app.config.get("DEBUG", False)
-        }
-    }
-    
-    overall_healthy = True
-    
-    # Check database connectivity
-    try:
-        db.session.execute(text("SELECT 1"))
-        health_status["checks"]["database"] = {
+@health_ns.route('/')
+class HealthStatus(Resource):
+    @health_ns.marshal_with(health_check_model, code=200)
+    def get(self):
+        """
+        Comprehensive health check for monitoring and load balancers.
+        Checks database connectivity, JWT configuration, and Flask setup.
+        """
+        health_status = {
             "status": "healthy",
-            "message": "Database connection successful"
-        }
-    except Exception as e:
-        health_status["checks"]["database"] = {
-            "status": "unhealthy",
-            "message": f"Database connection failed: {str(e)}"
-        }
-        overall_healthy = False
-    
-
-    # Check JWT configuration
-    try:
-        jwt_secret = app.config.get("JWT_SECRET_KEY")
-        if jwt_secret:
-            health_status["checks"]["jwt"] = {
-                "status": "healthy",
-                "message": "JWT configuration valid"
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+            "service": "AccessVault API",
+            "version": "1.0.0",
+            "checks": {},
+            "system": {
+                "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+                "flask_version": flask.__version__,
+                "environment": app.config.get("ENV", "development"),
+                "debug_mode": app.config.get("DEBUG", False)
             }
-        else:
-            health_status["checks"]["jwt"] = {
+        }
+        
+        overall_healthy = True
+        
+        # Check database connectivity
+        try:
+            db.session.execute(text("SELECT 1"))
+            health_status["checks"]["database"] = {
+                "status": "healthy",
+                "message": "Database connection successful"
+            }
+        except Exception as e:
+            logger.error(f"Database connection failed: {str(e)}")
+            health_status["checks"]["database"] = {
                 "status": "unhealthy",
-                "message": "JWT secret key not configured"
+                "message": f"Database connection failed: {str(e)}"
             }
             overall_healthy = False
-    except Exception as e:
-        health_status["checks"]["jwt"] = {
-            "status": "unhealthy",
-            "message": f"JWT configuration error: {str(e)}"
-        }
-        overall_healthy = False
-    
+        
 
-    # Check Flask configuration
-    try:
-        secret_key = app.config.get("SECRET_KEY")
-        if secret_key:
-            health_status["checks"]["flask"] = {
-                "status": "healthy",
-                "message": "Flask configuration valid"
-            }
-        else:
-            health_status["checks"]["flask"] = {
+        # Check JWT configuration
+        try:
+            jwt_secret = app.config.get("JWT_SECRET_KEY")
+            if jwt_secret:
+                health_status["checks"]["jwt"] = {
+                    "status": "healthy",
+                    "message": "JWT configuration valid"
+                }
+            else:
+                health_status["checks"]["jwt"] = {
+                    "status": "unhealthy",
+                    "message": "JWT secret key not configured"
+                }
+                overall_healthy = False
+        except Exception as e:
+            logger.error(f"JWT configuration error: {str(e)}")
+            health_status["checks"]["jwt"] = {
                 "status": "unhealthy",
-                "message": "Flask secret key not configured"
+                "message": f"JWT configuration error: {str(e)}"
             }
             overall_healthy = False
-    except Exception as e:
-        health_status["checks"]["flask"] = {
-            "status": "unhealthy",
-            "message": f"Flask configuration error: {str(e)}"
-        }
-        overall_healthy = False
-    
-    # Set overall status
-    health_status["status"] = "healthy" if overall_healthy else "unhealthy"
-    
-    # Return appropriate status code
-    status_code = 200 if overall_healthy else 503
-    return health_status, status_code
+        
+
+        # Check Flask configuration
+        try:
+            secret_key = app.config.get("SECRET_KEY")
+            if secret_key:
+                health_status["checks"]["flask"] = {
+                    "status": "healthy",
+                    "message": "Flask configuration valid"
+                }
+            else:
+                health_status["checks"]["flask"] = {
+                    "status": "unhealthy",
+                    "message": "Flask secret key not configured"
+                }
+                overall_healthy = False
+        except Exception as e:
+            logger.error(f"Flask configuration error: {str(e)}")
+            health_status["checks"]["flask"] = {
+                "status": "unhealthy",
+                "message": f"Flask configuration error: {str(e)}"
+            }
+            overall_healthy = False
+        
+        # Set overall status
+        health_status["status"] = "healthy" if overall_healthy else "unhealthy"
+        
+        # Return appropriate status code
+        status_code = 200 if overall_healthy else 503
+        logger.info(f"Health status: {health_status['status']}")
+        return health_status, status_code

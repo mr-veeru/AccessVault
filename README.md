@@ -43,28 +43,49 @@ Start the Flask development server:
 python app.py
 ```
 The API will be available at:
-- **API Base URL**: `http://127.0.0.1:5000`
-- **Health Check**: `http://127.0.0.1:5000/health`
+- **API Base URL**: `http://127.0.0.1:5000/`
+- **Health Check**: `http://127.0.0.1:5000/api/health`
+- **Swagger UI**: `http://127.0.0.1:5000/swagger-ui/`
 
 ## Project Structure
 ```
 AccessVault/
 ├── app.py                 # Main application entry point and Flask app factory
 ├── src/                   # Core application package
-│   ├── models.py          # SQLAlchemy database models (User, PasswordResetToken)
-│   ├── extensions.py      # Flask extensions (db, jwt, bcrypt, limiter, api)
+│   ├── models.py          # SQLAlchemy database models (User)
+│   ├── extensions.py      # Flask extensions (db, api)
 │   ├── config.py          # Application configuration and database settings
 │   └── routes/            # API routes organized by functionality
 │       ├── __init__.py    # Route package initialization
 │       └── health.py      # Health check namespace (Flask-RESTX)
 ├── scripts/               # Database and utility scripts
 │   └── init_db.py         # Database initialization script
+├── logs/                  # Application logs (auto-generated, git-ignored)
+│   └── accessvault.log    # Current log file with daily rotation
 ├── requirements.txt       # Python package dependencies
 ├── .env                   # Environment variables (git-ignored)
 ├── .env.example           # Environment variables template (git-tracked)
 ├── .gitignore             # Git ignore patterns
 └── README.md              # Project documentation
 ```
+
+## Architecture
+
+AccessVault follows a modular architecture with clear separation of concerns:
+
+### Core Components
+
+- **`app.py`**: Main entry point and Flask application factory
+- **`src/`**: Core application package containing all business logic
+- **`src/extensions.py`**: Flask extensions initialization (db, jwt, bcrypt, limiter, api)
+- **`src/config.py`**: Configuration management with environment variables
+- **`src/models.py`**: SQLAlchemy database models
+- **`src/logger.py`**: Logging configuration with rotation
+- **`src/routes/`**: API routes organized by functionality using Flask-RESTX namespaces
+
+### Route Organization
+
+- **`health_ns`**: Health check endpoints for monitoring
 
 ## API Reference
 
@@ -76,6 +97,10 @@ AccessVault/
 **Response:**
 ```json
 {
+    "endpoints": {
+        "health": "/health",
+        "swagger": "/api/swagger-ui/"
+    },
     "message": "AccessVault API is running",
     "status": "healthy",
     "version": "1.0.0"
@@ -90,30 +115,30 @@ AccessVault/
 **Response (Healthy):**
 ```json
 {
-  "status": "healthy",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "service": "AccessVault API",
-  "version": "1.0.0",
-  "checks": {
-    "database": {
-      "status": "healthy",
-      "message": "Database connection successful"
+    "status": "healthy",
+    "timestamp": "2025-09-19T10:39:51.341416+00:00Z",
+    "service": "AccessVault API",
+    "version": "1.0.0",
+    "checks": {
+        "database": {
+            "status": "healthy",
+            "message": "Database connection successful"
+        },
+        "jwt": {
+            "status": "healthy",
+            "message": "JWT configuration valid"
+        },
+        "flask": {
+            "status": "healthy",
+            "message": "Flask configuration valid"
+        }
     },
-    "jwt": {
-      "status": "healthy",
-      "message": "JWT configuration valid"
-    },
-    "flask": {
-      "status": "healthy",
-      "message": "Flask configuration valid"
+    "system": {
+        "python_version": "3.10.11",
+        "flask_version": "2.3.3",
+        "environment": "development",
+        "debug_mode": true
     }
-  },
-  "system": {
-    "python_version": "3.10.0",
-    "flask_version": "2.3.3",
-    "environment": "development",
-    "debug_mode": true
-  }
 }
 ```
 

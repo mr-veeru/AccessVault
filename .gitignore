@@ -3,3 +3,7 @@ __pycache__/
 
 # Config 
 .env
+
+# Logs
+logs/
+*.log
