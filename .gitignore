@@ -1,0 +1,5 @@
+# Python cachev
+__pycache__/
+
+# Config 
+.env
