@@ -53,11 +53,14 @@ AccessVault/
 ├── app.py                 # Main application entry point and Flask app factory
 ├── src/                   # Core application package
 │   ├── models.py          # SQLAlchemy database models (User)
-│   ├── extensions.py      # Flask extensions (db, api)
+│   ├── extensions.py      # Flask extensions (db, api, jwt, bcrypt)
+│   ├── decorators.py      # Role-based access control decorators
 │   ├── config.py          # Application configuration and database settings
 │   └── routes/            # API routes organized by functionality
 │       ├── __init__.py    # Route package initialization
-│       └── health.py      # Health check namespace (Flask-RESTX)
+│       ├── health.py      # Health check namespace (Flask-RESTX)
+│       ├── admin.py       # Admin routes namespace (user management, statistics)
+│       └── profile.py     # User profile routes namespace (profile, updates)
 ├── scripts/               # Database and utility scripts
 │   └── init_db.py         # Database initialization script
 ├── logs/                  # Application logs (auto-generated, git-ignored)
@@ -161,6 +164,109 @@ AccessVault follows a modular architecture with clear separation of concerns:
 **Status Codes:**
 - `200` - All systems healthy
 - `503` - One or more systems unhealthy
+
+### Authentication
+
+#### Register User
+**POST** `/api/auth/register`
+
+Register a new user account.
+
+**Request Body:**
+```json
+{
+  "name": "Veerendra",
+  "username": "veeru68",
+  "password": "Veeru!123",
+  "confirm_password": "Veeru!123"
+}
+```
+
+**Username Requirements:**
+- Minimum 3 characters
+- At least one letter
+- At least one number
+- No special characters
+- **Case-insensitive** - usernames are automatically converted to lowercase
+
+**Password Requirements:**
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one number
+- At least one special character: `@ # $ % & * ! ?`
+
+**Responses:**
+- `201 Created` - User registered successfully
+- `400 Bad Request` - Validation errors or username already exists
+
+**Error Response Examples:**
+```json
+{
+  "error": "Missing required fields",
+  "missing_fields": ["name", "username"],
+  "required_fields": ["name", "username", "password", "confirm_password"]
+}
+```
+
+```json
+{
+  "error": "Username already exist"
+}
+```
+
+#### Login
+**POST** `/api/auth/login`
+
+Authenticate user and receive JWT token.
+
+**Request Body:**
+```json
+{
+  "username": "veeru68",
+  "password": "Veeru!123"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Login successful",
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Missing fields or invalid credentials
+- `403 Forbidden` - Account deactivated
+
+```json
+{
+  "error": "Invalid username or password"
+}
+```
+
+```json
+{
+  "error": "Account is deactivated. Please contact admin."
+}
+```
+
+#### Logout
+**POST** `/api/auth/logout`
+
+Logout user by revoking all refresh tokens.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+  "message": "Logged out successfully"
+}
+```
 
 ## Troubleshooting
 
