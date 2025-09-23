@@ -24,8 +24,6 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    logger.info("Initializing Flask application")
-
     # Initialize extensions
     db.init_app(app)
     api.init_app(app)
@@ -53,7 +51,7 @@ def create_app():
             "status": "healthy",
             "version": "1.0.0",
             "endpoints": {
-                "health": "/health",
+                "health": "/api/health",
                 "swagger": "/api/swagger-ui/"
             }
         })

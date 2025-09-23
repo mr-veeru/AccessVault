@@ -33,7 +33,11 @@ def active_required(fn):
         
         # Check if user exists
         if not user:
-            return jsonify({"error": "User not found"}), 404
+            return {"error": "User not found"}, 404
+
+        # Check if user is active
+        if user.status != "active":
+            return {"error": "Account is deactivated. Please contact admin."}, 403
         
         # User is active, proceed with the original function
         return fn(*args, **kwargs)

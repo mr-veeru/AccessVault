@@ -101,7 +101,7 @@ AccessVault follows a modular architecture with clear separation of concerns:
 ```json
 {
     "endpoints": {
-        "health": "/health",
+        "health": "/api/health",
         "swagger": "/api/swagger-ui/"
     },
     "message": "AccessVault API is running",
@@ -266,6 +266,92 @@ Authorization: Bearer <access_token>
 {
   "message": "Logged out successfully"
 }
+```
+
+### Profile Management
+
+#### Get Profile
+**GET** `/api/profile/`
+
+Get the current user's profile information.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Response:**
+```json
+{
+  "user_id": 1,
+  "name": "Veerendra",
+  "username": "veeru68",
+  "role": "user",
+  "status": "active"
+}
+```
+
+#### Update Profile
+**PATCH** `/api/profile/`
+
+Update user's display name and/or username.
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+```json
+{
+  "name": "newName",
+  "username": "newUsername"
+}
+```
+
+**Note:** You can update either `name`, `username`, or both. At least one field is required.
+
+#### Update Password
+**PATCH** `/api/profile/password`
+
+Update user's password.
+
+**Rate Limit**: 5 password changes per hour per IP
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+**Request Body:**
+```json
+{
+  "old_password": "OldPass@123",
+  "new_password": "NewPass@456",
+  "confirm_password": "NewPass@456"
+}
+```
+
+#### Deactivate Account
+**PATCH** `/api/profile/deactivate`
+
+Deactivate own account (soft delete).
+
+**Rate Limit**: 3 deactivations per hour per IP
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
+```
+
+#### Delete Account
+**DELETE** `/profile/`
+
+Delete own account (hard delete).
+
+**Headers:**
+```
+Authorization: Bearer <access_token>
 ```
 
 ## Troubleshooting
