@@ -35,7 +35,7 @@ Create the database tables:
 ```bash
 python -m scripts.init_db
 ```
-This creates the `users` table based on the models.
+This creates the `users` and `revoked_tokens` tables based on the models.
 
 ### 5. Create Admin User (Optional)
 Create an admin user for testing:
@@ -64,15 +64,17 @@ The API will be available at:
 AccessVault/
 ├── app.py                 # Main application entry point and Flask app factory
 ├── src/                   # Core application package
-│   ├── models.py          # SQLAlchemy database models (User)
+│   ├── models.py          # SQLAlchemy database models (User, RevokedToken)
 │   ├── extensions.py      # Flask extensions (db, api, jwt, bcrypt)
 │   ├── decorators.py      # Role-based access control decorators
 │   ├── config.py          # Application configuration and database settings
+│   ├── logger.py          # Responsible for creating logs
 │   └── routes/            # API routes organized by functionality
 │       ├── __init__.py    # Route package initialization
 │       ├── health.py      # Health check namespace (Flask-RESTX)
-│       ├── admin.py       # Admin routes namespace (user management, statistics)
-│       └── profile.py     # User profile routes namespace (profile, updates)
+│       ├── auth.py        # Authentication routes namespace (register, login, logout, refresh)
+│       ├── profile.py     # User profile routes namespace (profile, updates)
+│       └── admin.py       # Admin routes namespace (user management, statistics)
 ├── scripts/               # Database and utility scripts
 │   └── init_db.py         # Database initialization script
 ├── logs/                  # Application logs (auto-generated, git-ignored)
@@ -229,7 +231,7 @@ Register a new user account.
 #### Login
 **POST** `/api/auth/login`
 
-Authenticate user and receive JWT token.
+Authenticate user and receive JWT access and refresh tokens.
 
 **Request Body:**
 ```json
@@ -244,8 +246,13 @@ Authenticate user and receive JWT token.
 {
   "message": "Login successful",
   "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
 }
 ```
+
+**Token Information:**
+- **Access Token**: Expires in 1 hour, used for API authentication
+- **Refresh Token**: Expires in 7 days, used to get new access tokens
 
 **Error Responses:**
 - `400 Bad Request` - Missing fields or invalid credentials
@@ -263,10 +270,51 @@ Authenticate user and receive JWT token.
 }
 ```
 
+#### Refresh Tokens
+**POST** `/api/auth/refresh`
+
+Refresh JWT tokens using a valid refresh token. This implements **token rotation** for enhanced security.
+
+**Headers:**
+```
+Authorization: Bearer <refresh_token>
+```
+
+**Response:**
+```json
+{
+  "message": "Tokens refreshed successfully",
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
+```
+
+**Security Features:**
+- **Token Rotation**: Old refresh token is immediately revoked
+- **One-time Use**: Each refresh token can only be used once
+- **Automatic Expiry**: Access tokens expire in 1 hour, refresh tokens in 7 days
+- **Database Tracking**: All revoked tokens are stored and validated
+
+**Error Responses:**
+- `401 Unauthorized` - Invalid or expired refresh token
+- `403 Forbidden` - Account deactivated
+
+```json
+{
+  "error": "Token has been revoked"
+}
+```
+
+**Token Rotation Flow:**
+1. Use refresh token to get new tokens
+2. Old refresh token becomes invalid immediately
+3. New tokens are generated with fresh expiration times
+4. Only the new refresh token can be used for future refreshes
+
 #### Logout
 **POST** `/api/auth/logout`
 
-Logout user by revoking all refresh tokens.
+Logout user by revoking the current access token.
 
 **Headers:**
 ```
@@ -279,6 +327,11 @@ Authorization: Bearer <access_token>
   "message": "Logged out successfully"
 }
 ```
+
+**Security Features:**
+- **Token Revocation**: Current access token is immediately revoked
+- **Database Tracking**: Revoked token is stored in database
+- **Immediate Effect**: Token becomes invalid instantly
 
 ### Profile Management
 

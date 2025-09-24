@@ -9,12 +9,11 @@ Uses Flask-RESTX for automatic Swagger documentation.
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from src.extensions import db, bcrypt, api
-from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity, get_jti, get_jwt
-from src.models import User
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jti, get_jwt
+from src.models import User, RevokedToken
 from src.logger import logger
 import re
-import secrets
-from datetime import datetime, timedelta
+from src.decorators import active_required
 
 # Create authentication namespace
 auth_ns = Namespace('auth', description='Authentication operations')
@@ -36,16 +35,27 @@ login_model = api.model('Login', {
 PASSWORD_REGEX = r"^(?=.*[A-Z])(?=.*\d)(?=.*[@#$%&*!?])[A-Za-z\d@#$%&*!?]{8,}$" # Requires: at least 6 chars, one uppercase, one digit, one special character
 USERNAME_REGEX = r"^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z0-9]{3,}$" # Requires: at least 3 chars, alphanumeric only, at least one letter and one digit
 
-# Set to store revoked JWT tokens
-revoked_tokens = set()
-
 def is_token_revoked(jwt_header, jwt_payload):
     """
     Callback function to check if a JWT token has been revoked.
     This function is called by Flask-JWT-Extended for every protected endpoint.
+    Uses database-backed token management for production security.
     """
     jti = jwt_payload.get('jti')
-    return jti in revoked_tokens
+    return RevokedToken.query.filter_by(jti=jti).first() is not None
+
+def revoke_token(jti, user_id):
+    """
+    Revoke a JWT token by adding it to the revoked tokens table.
+    """
+    # Check if token is already revoked
+    if RevokedToken.query.filter_by(jti=jti).first():
+        return
+    
+    # Add to revoked tokens table
+    revoked_token = RevokedToken(jti=jti, user_id=user_id)
+    db.session.add(revoked_token)
+    db.session.commit()
 
 @auth_ns.route('/register')
 class Register(Resource):
@@ -175,12 +185,18 @@ class Login(Resource):
             identity=str(user.id),
             additional_claims={"role": user.role, "status": user.status}
         )
+
+        refresh_token = create_refresh_token(
+            identity=str(user.id),
+            additional_claims={"role": user.role, "status": user.status}
+        )
         
         # Return success response with both tokens
         logger.info(f"Login successful for user: {username} (ID: {user.id}) from IP: {request.remote_addr}")
         return {
             "message": "Login successful",
             "access_token": access_token,
+            "refresh_token": refresh_token,
         }, 200
 
 
@@ -188,15 +204,48 @@ class Login(Resource):
 class Logout(Resource):
     @jwt_required()
     def post(self):
-        """Logout user by revoking all refresh tokens"""
+        """Logout user by revoking the current access token"""
         user_id = get_jwt_identity()
         user = User.query.get(int(user_id))
         
         if not user:
             return {"error": "User not found"}, 404
 
-        # Revoke the JWT token
+        # Revoke the current access token
         jti = get_jwt()['jti']  # JWT ID
-        revoked_tokens.add(jti)
+        revoke_token(jti, user.id)
         logger.info(f"User logged out successfully: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
         return {"message": "Logged out successfully"}, 200
+
+
+@auth_ns.route('/refresh')
+class Refresh(Resource):
+    @jwt_required(refresh=True)
+    @active_required
+    def post(self):
+        """Refresh JWT tokens with token rotation for security"""
+        user_id = get_jwt_identity()
+        user = User.query.get(int(user_id))
+        
+        # Get the current refresh token's JTI to revoke it
+        current_jti = get_jwt()['jti']
+        
+        # Revoke the current refresh token (token rotation)
+        revoke_token(current_jti, user.id)
+        
+        # Create new tokens
+        access_token = create_access_token(
+            identity=str(user.id),
+            additional_claims={"role": user.role, "status": user.status}
+        )
+        refresh_token = create_refresh_token(
+            identity=str(user.id),
+            additional_claims={"role": user.role, "status": user.status}
+        )
+        
+        logger.info(f"Tokens refreshed successfully for user: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
+        return {
+            "message": "Tokens refreshed successfully",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+        }, 200
