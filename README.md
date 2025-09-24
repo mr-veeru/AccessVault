@@ -37,7 +37,19 @@ python -m scripts.init_db
 ```
 This creates the `users` table based on the models.
 
-### 5. Run the Application
+### 5. Create Admin User (Optional)
+Create an admin user for testing:
+```bash
+python -m scripts.create_admin
+```
+**Default admin credentials:**
+- name: `Administrator`
+- Username: `admin66`
+- Password: `Admin@123`
+- Role: `admin`
+- Status: `active`
+
+### 6. Run the Application
 Start the Flask development server:
 ```bash
 python app.py
@@ -352,6 +364,242 @@ Delete own account (hard delete).
 **Headers:**
 ```
 Authorization: Bearer <access_token>
+```
+
+### Admin Routes
+
+All admin routes require `Authorization: Bearer <access_token>` header with admin role.
+
+#### System Statistics
+**GET** `/api/admin/stats`
+
+Get comprehensive system statistics for admin dashboard.
+
+**Response:**
+```json
+{
+  "message": "System statistics retrieved successfully",
+  "statistics": {
+    "total_users": 25,
+    "active_users": 20,
+    "inactive_users": 5,
+    "admins": 2,
+    "regular_users": 23
+  }
+}
+```
+
+#### Get All Users
+**GET** `/api/admin/users`
+
+Retrieve the list of all users in the system.
+
+**Response:**
+```json
+[
+  {
+    "id": 1,
+    "name": "Veerendra",
+    "username": "veeru68",
+    "role": "user",
+    "status": "active"
+  },
+  {
+    "id": 2,
+    "name": "Administrator",
+    "username": "admin36",
+    "role": "admin",
+    "status": "active"
+  }
+]
+```
+
+#### Get Active Users
+**GET** `/api/admin/users/active`
+
+Retrieve all users with active status.
+
+**Response:**
+```json
+{
+  "message": "Active users found",
+  "users": [
+    {
+      "id": 1,
+      "name": "Veerendra",
+      "username": "veeru68",
+      "role": "user",
+      "status": "active"
+    }
+  ]
+}
+```
+
+#### Get Inactive Users
+**GET** `/api/admin/users/inactive`
+
+Retrieve all users with inactive status.
+
+**Response:**
+```json
+{
+  "message": "Inactive users found",
+  "users": [
+    {
+      "id": 3,
+      "name": "Inactive User",
+      "username": "inactive1",
+      "role": "user",
+      "status": "inactive"
+    }
+  ]
+}
+```
+
+#### Search Users by Username
+**GET** `/api/admin/users/search/username/<username>`
+
+Search for users by username (case-insensitive partial match).
+
+**Example:** `/admin/users/search/username/veer`
+
+**Response:**
+```json
+{
+  "message": "Found 1 user(s) matching 'veer'",
+  "users": [
+    {
+      "id": 1,
+      "name": "Veerendra",
+      "username": "veeru68",
+      "role": "user",
+      "status": "active"
+    }
+  ]
+}
+```
+
+#### Search Users by Name
+**GET** `/api/admin/users/search/name/<name>`
+
+Search for users by full name (case-insensitive partial match).
+
+**Example:** `/admin/users/search/name/Veerendra`
+
+#### Get User by ID
+**GET** `/api/admin/users/<user_id>`
+
+Get specific user details by ID.
+
+**Response:**
+```json
+{
+  "id": 1,
+  "name": "Veerendra",
+  "username": "veeru68",
+  "role": "user",
+  "status": "active"
+}
+```
+
+#### Create User
+**POST** `/api/admin/users`
+
+Create a new user with default password.
+
+**Rate Limit**: 10 user creations per hour per IP
+
+**Request Body:**
+```json
+{
+  "name": "New User",
+  "username": "newuser1",
+  "role": "user"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "User created successfully",
+  "default_password": "User@123",
+  "user": {
+    "id": 3,
+    "name": "New User",
+    "username": "newuser1",
+    "role": "user",
+    "status": "active"
+  }
+}
+```
+
+#### Update User
+**PATCH** `/api/admin/users/<user_id>`
+
+Update user details (name, username, role).
+
+**Request Body:**
+```json
+{
+  "name": "Updated Name",
+  "username": "newusername",
+  "role": "admin"
+}
+```
+
+**Note:** You can update any combination of fields. At least one field is required.
+
+#### Activate User
+**PATCH** `/api/admin/users/<user_id>/activate`
+
+Activate a user account (set status to 'active').
+
+**Rate Limit**: 20 activations per hour per IP
+
+**Response:**
+```json
+{
+  "message": "User activated successfully",
+  "user": {
+    "id": 3,
+    "name": "User Name",
+    "username": "username",
+    "role": "user",
+    "status": "active"
+  }
+}
+```
+
+#### Deactivate User
+**PATCH** `/api/admin/users/<user_id>/deactivate`
+
+Deactivate a user account (set status to 'inactive').
+
+**Rate Limit**: 20 deactivations per hour per IP
+
+**Response:**
+```json
+{
+  "message": "User username deactivated"
+}
+```
+
+#### Delete User
+**DELETE** `/api/admin/users/<user_id>`
+
+Permanently delete a user account (hard delete).
+
+**Rate Limit**: 5 deletions per hour per IP
+
+**Edge Cases:**
+- Prevents admin from deleting their own account
+- Validates user exists before deletion
+
+**Response:**
+```json
+{
+  "message": "User username deleted successfully"
+}
 ```
 
 ## Troubleshooting

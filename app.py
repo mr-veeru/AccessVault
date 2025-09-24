@@ -10,7 +10,7 @@ Version: 1.0.0
 from flask import Flask, jsonify
 from src.config import Config
 from src.extensions import db, jwt, bcrypt
-from src.routes import health_ns, auth_ns, profile_ns
+from src.routes import health_ns, auth_ns, profile_ns, admin_ns
 from src import register_error_handlers
 from src.logger import logger
 from src.extensions import api
@@ -37,6 +37,7 @@ def create_app():
     api.add_namespace(health_ns)
     api.add_namespace(auth_ns)
     api.add_namespace(profile_ns)
+    api.add_namespace(admin_ns)
 
     # Register error handlers
     register_error_handlers(app)
