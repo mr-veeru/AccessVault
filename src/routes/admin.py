@@ -10,7 +10,7 @@ from flask import request
 from flask_restx import Namespace, Resource, fields
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.decorators import role_required
-from src.extensions import db, bcrypt, api
+from src.extensions import db, bcrypt, api, limiter
 from src.models import User, PasswordResetToken, RevokedToken
 from src.logger import logger
 from src.routes.auth import USERNAME_REGEX
@@ -70,6 +70,7 @@ message_response_model = api.model('MessageResponse', {
 
 @admin_ns.route('/stats')
 class Stats(Resource):
+    @limiter.limit("30 per minute")
     @admin_ns.marshal_with(stats_model, code=200)
     @jwt_required()
     @role_required("admin")
@@ -91,6 +92,7 @@ class Stats(Resource):
 
 @admin_ns.route('/users')
 class Users(Resource):
+    @limiter.limit("60 per minute")
     @admin_ns.marshal_list_with(user_model, code=200)
     @jwt_required()
     @role_required("admin")
@@ -108,6 +110,7 @@ class Users(Resource):
             for user in users
         ], 200
 
+    @limiter.limit("10 per hour")
     @admin_ns.expect(create_user_model)
     @jwt_required()
     @role_required("admin")
@@ -270,6 +273,7 @@ class SearchByName(Resource):
 
 @admin_ns.route('/users/<int:user_id>')
 class FindUserById(Resource):
+    @limiter.limit("60 per minute")
     @jwt_required()
     @role_required("admin")
     def get(self, user_id):
@@ -286,6 +290,7 @@ class FindUserById(Resource):
             "status": user.status
         }, 200
 
+    @limiter.limit("20 per hour")
     @admin_ns.expect(update_user_model)
     @jwt_required()
     @role_required("admin")
@@ -349,6 +354,7 @@ class FindUserById(Resource):
             "status": user.status
         }, 200
 
+    @limiter.limit("5 per hour")
     @jwt_required()
     @role_required("admin")
     def delete(self, user_id):
@@ -372,6 +378,7 @@ class FindUserById(Resource):
 
 @admin_ns.route('/users/<int:user_id>/activate')
 class ActivateUser(Resource):
+    @limiter.limit("20 per hour")
     @jwt_required()
     @role_required("admin")
     def patch(self, user_id):
@@ -395,6 +402,7 @@ class ActivateUser(Resource):
 
 @admin_ns.route('/users/<int:user_id>/deactivate')
 class DeactivateUser(Resource):
+    @limiter.limit("20 per hour")
     @jwt_required()
     @role_required("admin")
     def patch(self, user_id):
@@ -419,6 +427,7 @@ class DeactivateUser(Resource):
 
 @admin_ns.route('/users/<int:user_id>/generate-reset-token')
 class GenerateResetToken(Resource):
+    @limiter.limit("10 per hour")
     @admin_ns.marshal_with(reset_token_response_model, code=200)
     @jwt_required()
     @role_required('admin')
@@ -470,6 +479,7 @@ class GenerateResetToken(Resource):
 
 @admin_ns.route('/cleanup-expired-tokens')
 class CleanupExpiredTokens(Resource):
+    @limiter.limit("5 per hour")
     @admin_ns.marshal_with(message_response_model, code=200)
     @jwt_required()
     @role_required('admin')

@@ -11,7 +11,7 @@ from flask_restx import Namespace, Resource, fields
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.models import User
 from src.decorators import active_required
-from src.extensions import api, db, bcrypt
+from src.extensions import api, db, bcrypt, limiter
 from src.logger import logger
 from src.routes.auth import USERNAME_REGEX, PASSWORD_REGEX
 import re
@@ -41,6 +41,7 @@ update_password_model = api.model('UpdatePassword', {
 
 @profile_ns.route('/')
 class Profile(Resource):
+    @limiter.limit("60 per minute")
     @profile_ns.marshal_with(profile_model, code=200)
     @jwt_required()
     @active_required
@@ -57,6 +58,7 @@ class Profile(Resource):
             "status": user.status
         }, 200
 
+    @limiter.limit("20 per minute")
     @profile_ns.expect(update_profile_model)
     @jwt_required()
     @active_required
@@ -130,6 +132,7 @@ class Profile(Resource):
 
 @profile_ns.route('/password')
 class UpdatePassword(Resource):
+    @limiter.limit("5 per hour")
     @profile_ns.expect(update_password_model)
     @jwt_required()
     @active_required
@@ -192,6 +195,7 @@ class UpdatePassword(Resource):
 
 @profile_ns.route('/deactivate')
 class DeactivateAccount(Resource):
+    @limiter.limit("3 per hour")
     @jwt_required()
     @active_required
     def patch(self):
@@ -208,6 +212,7 @@ class DeactivateAccount(Resource):
 
 @profile_ns.route('/delete')
 class DeleteAccount(Resource):
+    @limiter.limit("1 per hour")
     @jwt_required()
     @active_required
     def delete(self):

@@ -8,7 +8,7 @@ Uses Flask-RESTX for automatic Swagger documentation.
 
 from flask import request
 from flask_restx import Namespace, Resource, fields
-from src.extensions import db, bcrypt, api
+from src.extensions import db, bcrypt, api, limiter
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 from src.models import User, RevokedToken, PasswordResetToken
 from src.logger import logger
@@ -78,6 +78,7 @@ def revoke_token(jti, user_id):
 
 @auth_ns.route('/register')
 class Register(Resource):
+    @limiter.limit("5 per minute")
     @auth_ns.expect(register_model)
     def post(self):
         """Register a new user account"""
@@ -154,6 +155,7 @@ class Register(Resource):
 
 @auth_ns.route('/login')
 class Login(Resource):
+    @limiter.limit("3 per minute")
     @auth_ns.expect(login_model)
     @auth_ns.marshal_with(token_response_model, code=200)
     def post(self):
@@ -222,6 +224,7 @@ class Login(Resource):
 
 @auth_ns.route('/logout')
 class Logout(Resource):
+    @limiter.limit("20 per minute")
     @auth_ns.marshal_with(message_response_model, code=200)
     @jwt_required()
     def post(self):
@@ -241,6 +244,7 @@ class Logout(Resource):
 
 @auth_ns.route('/refresh')
 class Refresh(Resource):
+    @limiter.limit("30 per minute")
     @auth_ns.marshal_with(token_response_model, code=200)
     @jwt_required(refresh=True)
     @active_required
@@ -275,6 +279,7 @@ class Refresh(Resource):
 
 @auth_ns.route('/reset-password')
 class ResetPassword(Resource):
+    @limiter.limit("5 per minute")
     @auth_ns.expect(reset_password_model)
     @auth_ns.marshal_with(message_response_model, code=200)
     def post(self):

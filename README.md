@@ -1,6 +1,6 @@
 # AccessVault - Secure User Management API
 
-A comprehensive Flask-based API for user authentication, authorization, and management with JWT tokens, role-based access control, password reset functionality, token cleanup, and comprehensive logging. Built with **Flask**, **PostgreSQL**, and **JWT Authentication**.
+A comprehensive Flask-based API for user authentication, authorization, and management with JWT tokens, role-based access control, password reset functionality, token cleanup, rate limiting, and comprehensive logging. Built with **Flask**, **PostgreSQL**, and **JWT Authentication**.
 
 ## Quick Start
 
@@ -14,6 +14,12 @@ cd AccessVault
 ```bash
 pip install -r requirements.txt
 ```
+
+**Key Dependencies:**
+- **Flask-Limiter**: Rate limiting and abuse prevention
+- **Flask-JWT-Extended**: JWT token management
+- **Flask-Bcrypt**: Password hashing
+- **PostgreSQL**: Database storage
 
 ### 3. Configure Environment
 Copy the environment template and configure your settings:
@@ -68,7 +74,7 @@ AccessVault/
 ├── app.py                 # Main application entry point and Flask app factory
 ├── src/                   # Core application package
 │   ├── models.py          # SQLAlchemy database models (User, RevokedToken, PasswordResetToken)
-│   ├── extensions.py      # Flask extensions (db, api, jwt, bcrypt)
+│   ├── extensions.py      # Flask extensions (db, api, jwt, bcrypt, limiter)
 │   ├── decorators.py      # Role-based access control decorators
 │   ├── config.py          # Application configuration and database settings
 │   ├── logger.py          # Responsible for creating logs
@@ -191,6 +197,8 @@ AccessVault follows a modular architecture with clear separation of concerns:
 
 Register a new user account.
 
+**Rate Limit:** `5 per minute` - Prevents spam registrations
+
 **Request Body:**
 ```json
 {
@@ -237,6 +245,8 @@ Register a new user account.
 **POST** `/api/auth/login`
 
 Authenticate user and receive JWT access and refresh tokens.
+
+**Rate Limit:** `3 per minute` - Prevents brute force attacks
 
 **Request Body:**
 ```json
@@ -343,6 +353,8 @@ Authorization: Bearer <access_token>
 
 Reset user password using a valid reset token provided by an admin.
 
+**Rate Limit:** `5 per minute` - Prevents token abuse
+
 **Request Body:**
 ```json
 {
@@ -430,7 +442,7 @@ Authorization: Bearer <access_token>
 
 Update user's password.
 
-**Rate Limit**: 5 password changes per hour per IP
+**Rate Limit:** `5 per hour` - Sensitive operation
 
 **Headers:**
 ```
@@ -709,6 +721,8 @@ Permanently delete a user account (hard delete).
 
 Generate a password reset token for a specific user (Admin only).
 
+**Rate Limit:** `10 per hour` - Admin operation
+
 **Response:**
 ```json
 {
@@ -738,6 +752,8 @@ Generate a password reset token for a specific user (Admin only).
 
 Clean up expired tokens from the database to improve performance (Admin only).
 
+**Rate Limit:** `5 per hour` - Maintenance operation
+
 **Response:**
 ```json
 {
@@ -753,6 +769,68 @@ Clean up expired tokens from the database to improve performance (Admin only).
 - **Database Performance**: Fewer records = faster queries
 - **Storage Efficiency**: Prevents unlimited growth
 - **Security**: Removes old token data
+
+## Rate Limiting & Security
+
+AccessVault implements comprehensive rate limiting to protect against abuse, brute force attacks, and ensure optimal performance.
+
+### Rate Limiting Configuration
+
+All API endpoints are protected with appropriate rate limits based on their security sensitivity and usage patterns:
+
+#### Authentication Endpoints
+- **Register**: `5 per minute` - Prevents spam registrations
+- **Login**: `3 per minute` - Prevents brute force attacks  
+- **Logout**: `20 per minute` - Normal usage patterns
+- **Refresh Token**: `30 per minute` - Token refresh operations
+- **Password Reset**: `5 per minute` - Prevents token abuse
+
+#### Profile Management
+- **Get Profile**: `60 per minute` - Read operations
+- **Update Profile**: `20 per minute` - Profile modifications
+- **Update Password**: `5 per hour` - Sensitive operation
+- **Deactivate Account**: `3 per hour` - Critical action
+- **Delete Account**: `1 per hour` - Most critical action
+
+#### Admin Operations
+- **System Stats**: `30 per minute` - Dashboard data
+- **List Users**: `60 per minute` - User management
+- **Create User**: `10 per hour` - User creation
+- **Update User**: `20 per hour` - User modifications
+- **Delete User**: `5 per hour` - Critical admin action
+- **Activate/Deactivate**: `20 per hour` - User status changes
+- **Generate Reset Token**: `10 per hour` - Password reset tokens
+- **Cleanup Tokens**: `5 per hour` - Maintenance operations
+
+#### Health Monitoring
+- **Health Check**: `120 per minute` - Monitoring endpoints
+
+### Rate Limiting Features
+
+- **IP-Based Tracking**: Limits are applied per client IP address
+- **Memory Storage**: Uses in-memory storage for development
+- **Redis Support**: Production-ready with Redis for distributed systems
+- **Automatic Reset**: Limits reset based on time windows
+- **HTTP 429 Responses**: Clear rate limit exceeded responses
+
+### Configuration
+
+Rate limiting is configured in `src/extensions.py`:
+
+```python
+limiter = Limiter(
+    key_func=get_remote_address,   # Identifies clients by IP
+    storage_uri=redis_url,         # Redis storage (fallback to memory)
+    default_limits=["100 per day", "20 per hour", "5 per minute"]
+)
+```
+
+### Production Considerations
+
+- **Redis Storage**: Set `RATELIMIT_STORAGE_URL` environment variable for Redis
+- **Load Balancers**: Consider using consistent IP hashing
+- **Monitoring**: Track rate limit hits for security insights
+- **Tuning**: Adjust limits based on usage patterns
 
 ## Token Management & Maintenance
 
@@ -845,6 +923,12 @@ POST /api/auth/login
 ## Troubleshooting
 
 ### Common Issues
+
+**Rate Limiting Issues:**
+- **HTTP 429 Errors**: Rate limit exceeded, wait before retrying
+- **Login Blocked**: Wait 1 minute after 3 failed login attempts
+- **Registration Blocked**: Wait 1 minute after 5 registration attempts
+- **Password Reset Blocked**: Wait 1 minute after 5 reset attempts
 
 **Database Connection Issues:**
 - Ensure your PostgreSQL database is running and accessible

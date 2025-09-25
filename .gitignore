@@ -7,3 +7,6 @@ __pycache__/
 # Logs
 logs/
 *.log
+
+# Rate limiter storage
+limiter_storage/

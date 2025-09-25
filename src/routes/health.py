@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import sys
 from sqlalchemy import text
 from flask import current_app as app
-from src.extensions import db, api
+from src.extensions import db, limiter
 import flask
 from src.logger import logger
 from flask_restx import Namespace, fields, Resource
@@ -31,6 +31,7 @@ health_check_model = health_ns.model('HealthCheck', {
 # Health check endpoint
 @health_ns.route('/')
 class HealthStatus(Resource):
+    @limiter.limit("10 per minute")
     @health_ns.marshal_with(health_check_model, code=200)
     def get(self):
         """
@@ -68,6 +69,24 @@ class HealthStatus(Resource):
             }
             overall_healthy = False
         
+
+        # Check Rate Limiting configuration
+        try:
+            import os
+            redis_url = os.getenv("RATELIMIT_STORAGE_URL", "memory://")
+            storage_type = "Redis" if redis_url.startswith("redis://") else "Memory"
+            health_status["checks"]["rate_limiting"] = {
+                "status": "healthy",
+                "message": f"Rate limiting active using {storage_type} storage",
+                "storage_type": storage_type,
+                "storage_uri": redis_url
+            }
+        except Exception as e:
+            health_status["checks"]["rate_limiting"] = {
+                "status": "unhealthy",
+                "message": f"Rate limiting configuration error: {str(e)}"
+            }
+            overall_healthy = False
 
         # Check JWT configuration
         try:

@@ -9,7 +9,7 @@ Version: 1.0.0
 
 from flask import Flask, jsonify
 from src.config import Config
-from src.extensions import db, jwt, bcrypt
+from src.extensions import db, jwt, bcrypt, limiter
 from src.routes import health_ns, auth_ns, profile_ns, admin_ns
 from src import register_error_handlers
 from src.logger import logger
@@ -29,6 +29,7 @@ def create_app():
     api.init_app(app)
     jwt.init_app(app)
     bcrypt.init_app(app)
+    limiter.init_app(app)
     
     # Register JWT token revocation callback
     jwt.token_in_blocklist_loader(is_token_revoked)
