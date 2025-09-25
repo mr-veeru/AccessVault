@@ -11,10 +11,12 @@ from flask_restx import Namespace, Resource, fields
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.decorators import role_required
 from src.extensions import db, bcrypt, api
-from src.models import User
+from src.models import User, PasswordResetToken, RevokedToken
 from src.logger import logger
 from src.routes.auth import USERNAME_REGEX
 import re
+import secrets
+from datetime import datetime, timedelta
 
 # Create admin namespace
 admin_ns = Namespace('admin', description='Administrative operations')
@@ -48,10 +50,22 @@ stats_model = api.model('Stats', {
     'regular_users': fields.Integer(description='Number of regular users')
 })
 
+# Password reset models
+reset_token_response_model = api.model('ResetTokenResponse', {
+    'message': fields.String(description='Response message'),
+    'token': fields.String(description='Password reset token'),
+    'expires_at': fields.String(description='Token expiration time'),
+    'user': fields.Raw(description='User information')
+})
+
 reset_token_model = api.model('ResetToken', {
     'token': fields.String(description='Reset token'),
     'expires_at': fields.String(description='Token expiration time'),
     'user': fields.Nested(user_model, description='User information')
+})
+
+message_response_model = api.model('MessageResponse', {
+    'message': fields.String(description='Response message')
 })
 
 @admin_ns.route('/stats')
@@ -400,4 +414,98 @@ class DeactivateUser(Resource):
             "username": user.username,
             "role": user.role,
             "status": user.status
+        }, 200
+
+
+@admin_ns.route('/users/<int:user_id>/generate-reset-token')
+class GenerateResetToken(Resource):
+    @admin_ns.marshal_with(reset_token_response_model, code=200)
+    @jwt_required()
+    @role_required('admin')
+    def get(self, user_id):
+        """
+        Generate password reset token for a specific user (Admin only).
+        
+        This endpoint allows admins to generate a password reset token for a specific user
+        by their user ID. The token expires in 24 hours and can only be used once.
+        """
+        # Find the user by ID
+        user = User.query.get(user_id)
+        if not user:
+            return {"error": "User not found"}, 404
+        
+        # Check if user is active
+        if user.status != "active":
+            return {"error": "Cannot generate reset token for inactive user"}, 400
+        
+        # Generate secure token (24 bytes = 32 characters when base64 encoded)
+        token = secrets.token_urlsafe(24)
+        
+        # Set expiration (24 hours from now)
+        expires_at = datetime.utcnow() + timedelta(hours=24)
+        
+        # Create password reset token
+        reset_token = PasswordResetToken(
+            user_id=user.id,
+            token=token,
+            expires_at=expires_at
+        )
+        
+        db.session.add(reset_token)
+        db.session.commit()
+        
+        logger.info(f"Password reset token generated for user: {user.username} (ID: {user.id}) by admin from IP: {request.remote_addr}")
+        
+        return {
+            "message": "Password reset token generated successfully",
+            "token": token,
+            "expires_at": expires_at.isoformat() + "Z",
+            "user": {
+                "id": user.id,
+                "name": user.name,
+                "username": user.username
+            }
+        }, 200
+
+
+@admin_ns.route('/cleanup-expired-tokens')
+class CleanupExpiredTokens(Resource):
+    @admin_ns.marshal_with(message_response_model, code=200)
+    @jwt_required()
+    @role_required('admin')
+    def delete(self):
+        """
+        Clean up expired tokens from the database (Admin only).
+        
+        This endpoint removes all expired JWT tokens and password reset tokens
+        from the database to improve performance and reduce storage usage.
+        """
+        current_time = datetime.utcnow()
+        
+        # Clean up expired JWT tokens
+        expired_jwt_tokens = RevokedToken.query.filter(
+            RevokedToken.revoked_at < current_time - timedelta(days=7)
+        ).all()
+        
+        jwt_count = len(expired_jwt_tokens)
+        for token in expired_jwt_tokens:
+            db.session.delete(token)
+        
+        # Clean up expired password reset tokens
+        expired_reset_tokens = PasswordResetToken.query.filter(
+            PasswordResetToken.expires_at < current_time
+        ).all()
+        
+        reset_count = len(expired_reset_tokens)
+        for token in expired_reset_tokens:
+            db.session.delete(token)
+        
+        db.session.commit()
+        
+        total_cleaned = jwt_count + reset_count
+        
+        logger.info(f"Token cleanup completed by admin: {jwt_count} expired JWT tokens, {reset_count} expired reset tokens removed from IP: {request.remote_addr}")
+        
+        return {
+            "message": f"Cleanup completed successfully. Removed {total_cleaned} expired tokens ({jwt_count} JWT tokens, {reset_count} reset tokens)"
         }, 200

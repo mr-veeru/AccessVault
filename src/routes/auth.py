@@ -9,11 +9,12 @@ Uses Flask-RESTX for automatic Swagger documentation.
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from src.extensions import db, bcrypt, api
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jti, get_jwt
-from src.models import User, RevokedToken
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
+from src.models import User, RevokedToken, PasswordResetToken
 from src.logger import logger
 import re
 from src.decorators import active_required
+from datetime import datetime
 
 # Create authentication namespace
 auth_ns = Namespace('auth', description='Authentication operations')
@@ -29,6 +30,24 @@ register_model = api.model('Register', {
 login_model = api.model('Login', {
     'username': fields.String(required=True, description='Username', example='veeru68'),
     'password': fields.String(required=True, description='Password', example='Password123!')
+})
+
+# Response models for Swagger documentation
+token_response_model = api.model('TokenResponse', {
+    'message': fields.String(description='Response message'),
+    'access_token': fields.String(description='JWT access token (expires in 1 hour)'),
+    'refresh_token': fields.String(description='JWT refresh token (expires in 7 days)')
+})
+
+message_response_model = api.model('MessageResponse', {
+    'message': fields.String(description='Response message')
+})
+
+# Password reset models
+reset_password_model = api.model('ResetPassword', {
+    'token': fields.String(required=True, description='Password reset token', example='abc123def456'),
+    'new_password': fields.String(required=True, description='New password', example='NewPassword123!'),
+    'confirm_password': fields.String(required=True, description='Confirm new password', example='NewPassword123!')
 })
 
 # Regex validation patterns
@@ -136,6 +155,7 @@ class Register(Resource):
 @auth_ns.route('/login')
 class Login(Resource):
     @auth_ns.expect(login_model)
+    @auth_ns.marshal_with(token_response_model, code=200)
     def post(self):
         """Authenticate user and receive JWT tokens"""
         data = request.get_json()
@@ -202,6 +222,7 @@ class Login(Resource):
 
 @auth_ns.route('/logout')
 class Logout(Resource):
+    @auth_ns.marshal_with(message_response_model, code=200)
     @jwt_required()
     def post(self):
         """Logout user by revoking the current access token"""
@@ -220,6 +241,7 @@ class Logout(Resource):
 
 @auth_ns.route('/refresh')
 class Refresh(Resource):
+    @auth_ns.marshal_with(token_response_model, code=200)
     @jwt_required(refresh=True)
     @active_required
     def post(self):
@@ -249,3 +271,69 @@ class Refresh(Resource):
             "access_token": access_token,
             "refresh_token": refresh_token,
         }, 200
+
+
+@auth_ns.route('/reset-password')
+class ResetPassword(Resource):
+    @auth_ns.expect(reset_password_model)
+    @auth_ns.marshal_with(message_response_model, code=200)
+    def post(self):
+        """
+        Reset user password using reset token.
+        
+        This endpoint allows users to reset their password using a valid
+        reset token provided by an admin.
+        """
+        data = request.get_json()
+        if not data:
+            return {"error": "No JSON data provided"}, 400
+        
+        token = data.get("token", "").strip()
+        new_password = data.get("new_password")
+        confirm_password = data.get("confirm_password")
+        
+        if not token:
+            return {"error": "Reset token is required"}, 400
+        
+        if not new_password or not confirm_password:
+            return {"error": "New password and confirmation are required"}, 400
+        
+        # Validate password confirmation
+        if new_password != confirm_password:
+            return {"error": "Passwords do not match"}, 400
+        
+        # Validate password strength
+        if not re.match(PASSWORD_REGEX, new_password):
+            return {
+                "error": "Password must be at least 8 characters long, include one uppercase letter, one number, and one special character (@,#,$,%,&,*,!,?)"
+            }, 400
+        
+        # Find the reset token
+        reset_token = PasswordResetToken.query.filter_by(token=token, used=False).first()
+        if not reset_token:
+            return {"error": "Invalid or expired reset token"}, 400
+        
+        # Check if token is expired
+        if datetime.utcnow() > reset_token.expires_at:
+            return {"error": "Reset token has expired"}, 400
+        
+        # Get the user
+        user = User.query.get(reset_token.user_id)
+        if not user or user.status != "active":
+            return {"error": "User not found or inactive"}, 400
+        
+        # Check if new password is different from current password
+        if bcrypt.check_password_hash(user.password, new_password):
+            return {"error": "New password must be different from current password"}, 400
+        
+        # Update password
+        user.password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+        
+        # Mark token as used
+        reset_token.used = True
+        
+        db.session.commit()
+        
+        logger.info(f"Password reset successfully for user: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
+        
+        return {"message": "Password reset successfully"}, 200

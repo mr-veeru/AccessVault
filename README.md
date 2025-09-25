@@ -1,6 +1,6 @@
 # AccessVault - Secure User Management API
 
-A comprehensive Flask-based API for user authentication, authorization, and management with JWT tokens, role-based access control, rate limiting, and comprehensive logging. Built with **Flask**, **PostgreSQL**, and **JWT Authentication**.
+A comprehensive Flask-based API for user authentication, authorization, and management with JWT tokens, role-based access control, password reset functionality, token cleanup, and comprehensive logging. Built with **Flask**, **PostgreSQL**, and **JWT Authentication**.
 
 ## Quick Start
 
@@ -35,7 +35,10 @@ Create the database tables:
 ```bash
 python -m scripts.init_db
 ```
-This creates the `users` and `revoked_tokens` tables based on the models.
+This creates the following tables based on the models:
+- `users` - User accounts and authentication data
+- `revoked_tokens` - Revoked JWT tokens for security
+- `password_reset_tokens` - Admin-generated password reset tokens
 
 ### 5. Create Admin User (Optional)
 Create an admin user for testing:
@@ -57,14 +60,14 @@ python app.py
 The API will be available at:
 - **API Base URL**: `http://127.0.0.1:5000/`
 - **Health Check**: `http://127.0.0.1:5000/api/health`
-- **Swagger UI**: `http://127.0.0.1:5000/swagger-ui/`
+- **Swagger UI**: `http://127.0.0.1:5000/api/swagger-ui/`
 
 ## Project Structure
 ```
 AccessVault/
 ├── app.py                 # Main application entry point and Flask app factory
 ├── src/                   # Core application package
-│   ├── models.py          # SQLAlchemy database models (User, RevokedToken)
+│   ├── models.py          # SQLAlchemy database models (User, RevokedToken, PasswordResetToken)
 │   ├── extensions.py      # Flask extensions (db, api, jwt, bcrypt)
 │   ├── decorators.py      # Role-based access control decorators
 │   ├── config.py          # Application configuration and database settings
@@ -72,11 +75,13 @@ AccessVault/
 │   └── routes/            # API routes organized by functionality
 │       ├── __init__.py    # Route package initialization
 │       ├── health.py      # Health check namespace (Flask-RESTX)
-│       ├── auth.py        # Authentication routes namespace (register, login, logout, refresh)
+│       ├── auth.py        # Authentication routes namespace (register, login, logout, refresh, password reset)
 │       ├── profile.py     # User profile routes namespace (profile, updates)
-│       └── admin.py       # Admin routes namespace (user management, statistics)
+│       └── admin.py       # Admin routes namespace (user management, statistics, token generation, cleanup)
 ├── scripts/               # Database and utility scripts
-│   └── init_db.py         # Database initialization script
+│   ├── init_db.py         # Database initialization script
+│   ├── create_admin.py    # Script to create initial admin user
+│   └── cleanup_tokens.py  # Token cleanup script for maintenance
 ├── logs/                  # Application logs (auto-generated, git-ignored)
 │   └── accessvault.log    # Current log file with daily rotation
 ├── requirements.txt       # Python package dependencies
@@ -332,6 +337,50 @@ Authorization: Bearer <access_token>
 - **Token Revocation**: Current access token is immediately revoked
 - **Database Tracking**: Revoked token is stored in database
 - **Immediate Effect**: Token becomes invalid instantly
+
+#### Password Reset
+**POST** `/api/auth/reset-password`
+
+Reset user password using a valid reset token provided by an admin.
+
+**Request Body:**
+```json
+{
+  "token": "abc123def456",
+  "new_password": "NewPassword123!",
+  "confirm_password": "NewPassword123!"
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Password reset successfully"
+}
+```
+
+**Security Features:**
+- **Admin-Controlled**: Only admins can generate reset tokens
+- **Time-Limited**: Tokens expire in 24 hours
+- **One-Time Use**: Tokens can only be used once
+- **Strong Validation**: Enforces password strength requirements
+- **Immediate Effect**: Old password becomes invalid instantly
+
+**Error Responses:**
+- `400 Bad Request` - Invalid token, expired token, or validation errors
+- `404 Not Found` - Token not found or user inactive
+
+```json
+{
+  "error": "Invalid or expired reset token"
+}
+```
+
+```json
+{
+  "error": "Password must be at least 8 characters long, include one uppercase letter, one number, and one special character"
+}
+```
 
 ### Profile Management
 
@@ -652,6 +701,144 @@ Permanently delete a user account (hard delete).
 ```json
 {
   "message": "User username deleted successfully"
+}
+```
+
+#### Generate Password Reset Token
+**GET** `/api/admin/users/<user_id>/generate-reset-token`
+
+Generate a password reset token for a specific user (Admin only).
+
+**Response:**
+```json
+{
+  "message": "Password reset token generated successfully",
+  "token": "abc123def456",
+  "expires_at": "2025-09-25T12:00:00Z",
+  "user": {
+    "id": 6,
+    "name": "Test User",
+    "username": "testuser123"
+  }
+}
+```
+
+**Security Features:**
+- **Admin Only**: Requires admin role authentication
+- **24-Hour Expiry**: Tokens expire in 24 hours
+- **One-Time Use**: Each token can only be used once
+- **Secure Generation**: Uses cryptographically secure token generation
+
+**Error Responses:**
+- `404 Not Found` - User not found
+- `400 Bad Request` - User is inactive
+
+#### Cleanup Expired Tokens
+**DELETE** `/api/admin/cleanup-expired-tokens`
+
+Clean up expired tokens from the database to improve performance (Admin only).
+
+**Response:**
+```json
+{
+  "message": "Cleanup completed successfully. Removed 5 expired tokens (3 JWT tokens, 2 reset tokens)"
+}
+```
+
+**What Gets Cleaned:**
+- **Expired JWT Tokens**: Revoked tokens older than 7 days
+- **Expired Reset Tokens**: Password reset tokens past expiration
+
+**Benefits:**
+- **Database Performance**: Fewer records = faster queries
+- **Storage Efficiency**: Prevents unlimited growth
+- **Security**: Removes old token data
+
+## Token Management & Maintenance
+
+### JWT Authentication System
+
+AccessVault implements a comprehensive JWT authentication system with enhanced security features:
+
+#### Token Types
+- **Access Tokens**: Short-lived (1 hour) for API authentication
+- **Refresh Tokens**: Long-lived (7 days) for obtaining new access tokens
+- **Password Reset Tokens**: Admin-generated (24 hours) for password resets
+
+#### Security Features
+- **Token Rotation**: Refresh tokens are rotated on each use
+- **Token Revocation**: Immediate invalidation on logout
+- **Database Tracking**: All revoked tokens are stored and validated
+- **Automatic Expiry**: Tokens expire based on configured timeframes
+
+#### Token Cleanup
+
+**Manual Cleanup (Admin API):**
+```bash
+# Clean up expired tokens via API
+DELETE /api/admin/cleanup-expired-tokens
+Authorization: Bearer <admin_token>
+```
+
+**Scheduled Cleanup (Script):**
+```bash
+# Run cleanup script manually
+python -m scripts.cleanup_tokens
+
+# Or schedule with cron (daily at 2 AM)
+0 2 * * * cd /path/to/AccessVault && python -m scripts.cleanup_tokens
+```
+
+**Cleanup Schedule Recommendations:**
+- **Development**: Weekly cleanup
+- **Production**: Daily cleanup
+- **High Traffic**: Twice daily cleanup
+
+### Password Reset Flow
+
+1. **User requests password reset** from admin
+2. **Admin generates reset token** via API
+3. **User receives token** (via secure channel)
+4. **User resets password** using token
+5. **Token becomes invalid** after use
+
+### Example: Complete Password Reset Flow
+
+```bash
+# 1. Admin generates reset token for user ID 6
+GET /api/admin/users/6/generate-reset-token
+Authorization: Bearer <admin_token>
+
+# Response:
+{
+  "message": "Password reset token generated successfully",
+  "token": "abc123def456",
+  "expires_at": "2025-09-25T12:00:00Z",
+  "user": {
+    "id": 6,
+    "name": "Test User",
+    "username": "testuser123"
+  }
+}
+
+# 2. User resets password with the token
+POST /api/auth/reset-password
+{
+  "token": "abc123def456",
+  "new_password": "NewPassword123!",
+  "confirm_password": "NewPassword123!"
+}
+
+# Response:
+{
+  "message": "Password reset successfully"
+}
+
+# 3. User can now login with new password
+POST /api/auth/login
+{
+  "username": "testuser123",
+  "password": "NewPassword123!"
 }
 ```
 
