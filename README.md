@@ -1,261 +1,173 @@
-# AccessVault - Secure User Management API
+# AccessVault - Enterprise User Management API
 
-A comprehensive Flask-based API for user authentication, authorization, and management with JWT tokens, role-based access control, password reset functionality, token cleanup, rate limiting, and comprehensive logging. Built with **Flask**, **PostgreSQL**, and **JWT Authentication**.
+AccessVault is a **production-ready REST API** that provides secure user management capabilities for modern web applications. It's designed with enterprise security standards and includes features like JWT authentication, role-based access control, rate limiting, and comprehensive audit logging.
 
-## Quick Start
+### **Key Features**
 
-### 1. Clone the Repository
+- **JWT Authentication** - Secure token-based authentication
+- **Role-Based Access Control** - User and Admin roles
+- **Rate Limiting** - Redis-backed protection against abuse
+- **Token Management** - Automatic token rotation and revocation
+- **Password Security** - Bcrypt hashing with strength validation
+- **Admin Dashboard** - Complete user management interface
+- **Comprehensive Logging** - Security audit trail
+- **Health Monitoring** - System status and diagnostics
+- **Auto Documentation** - Interactive Swagger UI
+
+---
+
+## **Project Architecture**
+
+```
+AccessVault/
+├── 📁 src/                   # Core application package
+│   ├── 📄 __init__.py        # Package initialization & global error handlers
+│   ├── 📄 models.py          # Database models (User, RevokedToken, PasswordResetToken)
+│   ├── 📄 extensions.py      # Flask extensions (db, jwt, bcrypt, limiter, api)
+│   ├── 📄 decorators.py      # Access control decorators
+│   ├── 📄 config.py          # Configuration management
+│   ├── 📄 logger.py          # Logging configuration
+│   └── 📁 routes/            # API routes organized by functionality
+│       ├── 📄 __init__.py    # Routes package initialization
+│       ├── 📄 health.py      # Health check endpoints
+│       ├── 📄 auth.py        # Authentication (register, login, logout, refresh)
+│       ├── 📄 profile.py     # User profile management
+│       └── 📄 admin.py       # Admin operations
+├── 📁 scripts/               # Utility scripts
+│   ├── 📄 init_db.py         # Database initialization
+│   ├── 📄 create_admin.py    # Admin user creation
+│   └── 📄 cleanup_tokens.py  # Token cleanup
+├── 📁 logs/                  # Application logs (auto-generated)
+│   └── 📄 accessvault.log    # Current log file with daily rotation
+├── 📄 app.py                 # Main application entry point
+├── 📄 requirements.txt       # Python dependencies
+├── 📄 .env                   # Environment variables (git-ignored)
+├── 📄 .env.example           # Environment variables template
+├── 📄 .gitignore             # Git ignore patterns
+└── 📄 README.md              # This file
+```
+
+---
+
+## **Quick Start Guide**
+
+### **Step 1: Clone the Repository**
 ```bash
 git clone https://github.com/mr-veeru/AccessVault.git
 cd AccessVault
 ```
 
-### 2. Install Dependencies
+### **Step 2: Install Dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
 **Key Dependencies:**
-- **Flask-Limiter**: Rate limiting and abuse prevention
-- **Flask-JWT-Extended**: JWT token management
-- **Flask-Bcrypt**: Password hashing
-- **PostgreSQL**: Database storage
+- `Flask` - Web framework
+- `Flask-JWT-Extended` - JWT token management
+- `Flask-Bcrypt` - Password hashing
+- `Flask-Limiter` - Rate limiting
+- `PostgreSQL` - Database
+- `Redis` - Rate limiting storage (optional)
 
-### 3. Configure Environment
-Copy the environment template and configure your settings:
+### **Step 3: Set Up Environment Variables**
+Create a `.env` file in the project root:
 
 ```bash
-# Copy the example file
-copy .env.example .env
-```
+# Database Configuration
+SQLALCHEMY_DATABASE_URI=postgresql://username:password@localhost:5432/accessvault
 
-Edit `.env` file with your actual values:
+# Security Keys (Generate strong keys for production)
+SECRET_KEY=your-super-secret-key-here
+JWT_SECRET_KEY=your-jwt-secret-key-here
+
+# Rate Limiting (Optional - defaults to memory storage)
+RATELIMIT_STORAGE_URL=redis://localhost:6379/0
+```
 
 **For Supabase users:**
 ```bash
 SQLALCHEMY_DATABASE_URI=postgresql://postgres.xxxxx:your-password@aws-0-region.pooler.supabase.com:6543/postgres?sslmode=require
 ```
 
-### 4. Initialize Database
-Create the database tables:
+### **Step 4: Initialize Database**
 ```bash
 python -m scripts.init_db
 ```
-This creates the following tables based on the models:
+
+This creates the following tables:
 - `users` - User accounts and authentication data
 - `revoked_tokens` - Revoked JWT tokens for security
 - `password_reset_tokens` - Admin-generated password reset tokens
 
-### 5. Create Admin User (Optional)
-Create an admin user for testing:
+### **Step 5: Create Admin User (Optional)**
 ```bash
 python -m scripts.create_admin
 ```
-**Default admin credentials:**
-- name: `Administrator`
-- Username: `admin66`
-- Password: `Admin@123`
-- Role: `admin`
-- Status: `active`
 
-### 6. Run the Application
-Start the Flask development server:
+**Default admin credentials:**
+- **Username:** `admin66`
+- **Password:** `Admin@123`
+- **Role:** `admin`
+
+### **Step 6: Run the Application**
 ```bash
 python app.py
 ```
-The API will be available at:
-- **API Base URL**: `http://127.0.0.1:5000/`
-- **Health Check**: `http://127.0.0.1:5000/api/health`
-- **Swagger UI**: `http://127.0.0.1:5000/api/swagger-ui/`
 
-## Project Structure
-```
-AccessVault/
-├── app.py                 # Main application entry point and Flask app factory
-├── src/                   # Core application package
-│   ├── models.py          # SQLAlchemy database models (User, RevokedToken, PasswordResetToken)
-│   ├── extensions.py      # Flask extensions (db, api, jwt, bcrypt, limiter)
-│   ├── decorators.py      # Role-based access control decorators
-│   ├── config.py          # Application configuration and database settings
-│   ├── logger.py          # Responsible for creating logs
-│   └── routes/            # API routes organized by functionality
-│       ├── __init__.py    # Route package initialization
-│       ├── health.py      # Health check namespace (Flask-RESTX)
-│       ├── auth.py        # Authentication routes namespace (register, login, logout, refresh, password reset)
-│       ├── profile.py     # User profile routes namespace (profile, updates)
-│       └── admin.py       # Admin routes namespace (user management, statistics, token generation, cleanup)
-├── scripts/               # Database and utility scripts
-│   ├── init_db.py         # Database initialization script
-│   ├── create_admin.py    # Script to create initial admin user
-│   └── cleanup_tokens.py  # Token cleanup script for maintenance
-├── logs/                  # Application logs (auto-generated, git-ignored)
-│   └── accessvault.log    # Current log file with daily rotation
-├── requirements.txt       # Python package dependencies
-├── .env                   # Environment variables (git-ignored)
-├── .env.example           # Environment variables template (git-tracked)
-├── .gitignore             # Git ignore patterns
-└── README.md              # Project documentation
+**Access Points:**
+- **API Base URL:** `http://127.0.0.1:5000/`
+- **Health Check:** `http://127.0.0.1:5000/api/health/`
+- **Swagger UI:** `http://127.0.0.1:5000/api/swagger-ui/`
+
+### **Step 7: Token Cleanup (Optional)**
+For production environments, you can set up automated token cleanup:
+```bash
+python -m scripts.cleanup_tokens
 ```
 
-## Architecture
+**What it does:**
+- Removes expired JWT tokens (older than 7 days)
+- Removes expired password reset tokens
+- Improves database performance
+- Can be run as a scheduled task (cron job)
 
-AccessVault follows a modular architecture with clear separation of concerns:
+---
 
-### Core Components
+## **API Documentation**
 
-- **`app.py`**: Main entry point and Flask application factory
-- **`src/`**: Core application package containing all business logic
-- **`src/extensions.py`**: Flask extensions initialization (db, jwt, bcrypt, limiter, api)
-- **`src/config.py`**: Configuration management with environment variables
-- **`src/models.py`**: SQLAlchemy database models
-- **`src/logger.py`**: Logging configuration with rotation
-- **`src/routes/`**: API routes organized by functionality using Flask-RESTX namespaces
-
-### Route Organization
-
-- **`health_ns`**: Health check endpoints for monitoring
-
-## API Reference
-
-### Health Check Endpoints
-
-#### Basic Health Check
-**GET** `/` 
-
-**Response:**
-```json
-{
-    "endpoints": {
-        "health": "/api/health",
-        "swagger": "/api/swagger-ui/"
-    },
-    "message": "AccessVault API is running",
-    "status": "healthy",
-    "version": "1.0.0"
-}
+### **Health Check**
+```http
+GET /api/health/
 ```
+**Purpose:** Monitor system health and connectivity
+**Response:** System status, database connectivity, JWT configuration, rate limiting status
 
-#### Comprehensive Health Check
-**GET** `/health`
+### **Authentication Endpoints**
 
-**Description:** Detailed health check for monitoring and load balancers. Checks database connectivity, JWT configuration, and Flask setup.
+#### **Register User**
+```http
+POST /api/auth/register
+Content-Type: application/json
 
-**Response (Healthy):**
-```json
-{
-    "status": "healthy",
-    "timestamp": "2025-09-19T10:39:51.341416+00:00Z",
-    "service": "AccessVault API",
-    "version": "1.0.0",
-    "checks": {
-        "database": {
-            "status": "healthy",
-            "message": "Database connection successful"
-        },
-        "jwt": {
-            "status": "healthy",
-            "message": "JWT configuration valid"
-        },
-        "flask": {
-            "status": "healthy",
-            "message": "Flask configuration valid"
-        }
-    },
-    "system": {
-        "python_version": "3.10.11",
-        "flask_version": "2.3.3",
-        "environment": "development",
-        "debug_mode": true
-    }
-}
-```
-
-**Response (Unhealthy):**
-```json
-{
-  "status": "unhealthy",
-  "timestamp": "2024-01-15T10:30:00.000Z",
-  "service": "AccessVault API",
-  "version": "1.0.0",
-  "checks": {
-    "database": {
-      "status": "unhealthy",
-      "message": "Database connection failed: connection refused"
-    }
-  }
-}
-```
-
-**Status Codes:**
-- `200` - All systems healthy
-- `503` - One or more systems unhealthy
-
-### Authentication
-
-#### Register User
-**POST** `/api/auth/register`
-
-Register a new user account.
-
-**Rate Limit:** `5 per minute` - Prevents spam registrations
-
-**Request Body:**
-```json
 {
   "name": "Veerendra",
-  "username": "veeru68",
-  "password": "Veeru!123",
-  "confirm_password": "Veeru!123"
+  "username": "veeru123",
+  "password": "SecurePass123!",
+  "confirm_password": "SecurePass123!"
 }
 ```
 
-**Username Requirements:**
-- Minimum 3 characters
-- At least one letter
-- At least one number
-- No special characters
-- **Case-insensitive** - usernames are automatically converted to lowercase
+#### **Login**
+```http
+POST /api/auth/login
+Content-Type: application/json
 
-**Password Requirements:**
-- Minimum 8 characters
-- At least one uppercase letter
-- At least one number
-- At least one special character: `@ # $ % & * ! ?`
-
-**Responses:**
-- `201 Created` - User registered successfully
-- `400 Bad Request` - Validation errors or username already exists
-
-**Error Response Examples:**
-```json
 {
-  "error": "Missing required fields",
-  "missing_fields": ["name", "username"],
-  "required_fields": ["name", "username", "password", "confirm_password"]
+  "username": "veeru123",
+  "password": "SecurePass123!"
 }
 ```
-
-```json
-{
-  "error": "Username already exist"
-}
-```
-
-#### Login
-**POST** `/api/auth/login`
-
-Authenticate user and receive JWT access and refresh tokens.
-
-**Rate Limit:** `3 per minute` - Prevents brute force attacks
-
-**Request Body:**
-```json
-{
-  "username": "veeru68",
-  "password": "Veeru!123"
-}
-```
-
 **Response:**
 ```json
 {
@@ -265,672 +177,306 @@ Authenticate user and receive JWT access and refresh tokens.
 }
 ```
 
-**Token Information:**
-- **Access Token**: Expires in 1 hour, used for API authentication
-- **Refresh Token**: Expires in 7 days, used to get new access tokens
-
-**Error Responses:**
-- `400 Bad Request` - Missing fields or invalid credentials
-- `403 Forbidden` - Account deactivated
-
-```json
-{
-  "error": "Invalid username or password"
-}
-```
-
-```json
-{
-  "error": "Account is deactivated. Please contact admin."
-}
-```
-
-#### Refresh Tokens
-**POST** `/api/auth/refresh`
-
-Refresh JWT tokens using a valid refresh token. This implements **token rotation** for enhanced security.
-
-**Headers:**
-```
-Authorization: Bearer <refresh_token>
-```
-
-**Response:**
-```json
-{
-  "message": "Tokens refreshed successfully",
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
-}
-```
-
-**Security Features:**
-- **Token Rotation**: Old refresh token is immediately revoked
-- **One-time Use**: Each refresh token can only be used once
-- **Automatic Expiry**: Access tokens expire in 1 hour, refresh tokens in 7 days
-- **Database Tracking**: All revoked tokens are stored and validated
-
-**Error Responses:**
-- `401 Unauthorized` - Invalid or expired refresh token
-- `403 Forbidden` - Account deactivated
-
-```json
-{
-  "error": "Token has been revoked"
-}
-```
-
-**Token Rotation Flow:**
-1. Use refresh token to get new tokens
-2. Old refresh token becomes invalid immediately
-3. New tokens are generated with fresh expiration times
-4. Only the new refresh token can be used for future refreshes
-
-#### Logout
-**POST** `/api/auth/logout`
-
-Logout user by revoking the current access token.
-
-**Headers:**
-```
+#### **Logout**
+```http
+POST /api/auth/logout
 Authorization: Bearer <access_token>
 ```
 
-**Response:**
-```json
+#### **Refresh Tokens**
+```http
+POST /api/auth/refresh
+Authorization: Bearer <refresh_token>
+```
+
+#### **Reset Password**
+```http
+POST /api/auth/reset-password
+Content-Type: application/json
+
 {
-  "message": "Logged out successfully"
+  "token": "reset-token-from-admin",
+  "new_password": "NewSecurePass123!",
+  "confirm_password": "NewSecurePass123!"
 }
 ```
 
-**Security Features:**
-- **Token Revocation**: Current access token is immediately revoked
-- **Database Tracking**: Revoked token is stored in database
-- **Immediate Effect**: Token becomes invalid instantly
+### **Profile Management**
 
-#### Password Reset
-**POST** `/api/auth/reset-password`
+#### **Get Profile**
+```http
+GET /api/profile/
+Authorization: Bearer <access_token>
+```
 
-Reset user password using a valid reset token provided by an admin.
+#### **Update Profile**
+```http
+PATCH /api/profile/
+Authorization: Bearer <access_token>
+Content-Type: application/json
 
-**Rate Limit:** `5 per minute` - Prevents token abuse
-
-**Request Body:**
-```json
 {
-  "token": "abc123def456",
+  "name": "Veerendra",
+  "username": "veeru66"
+}
+```
+
+#### **Change Password**
+```http
+PATCH /api/profile/password
+Authorization: Bearer <access_token>
+Content-Type: application/json
+
+{
+  "old_password": "OldPassword123!",
   "new_password": "NewPassword123!",
   "confirm_password": "NewPassword123!"
 }
 ```
 
-**Response:**
-```json
-{
-  "message": "Password reset successfully"
-}
-```
-
-**Security Features:**
-- **Admin-Controlled**: Only admins can generate reset tokens
-- **Time-Limited**: Tokens expire in 24 hours
-- **One-Time Use**: Tokens can only be used once
-- **Strong Validation**: Enforces password strength requirements
-- **Immediate Effect**: Old password becomes invalid instantly
-
-**Error Responses:**
-- `400 Bad Request` - Invalid token, expired token, or validation errors
-- `404 Not Found` - Token not found or user inactive
-
-```json
-{
-  "error": "Invalid or expired reset token"
-}
-```
-
-```json
-{
-  "error": "Password must be at least 8 characters long, include one uppercase letter, one number, and one special character"
-}
-```
-
-### Profile Management
-
-#### Get Profile
-**GET** `/api/profile/`
-
-Get the current user's profile information.
-
-**Headers:**
-```
+#### **Deactivate Account**
+```http
+PATCH /api/profile/deactivate
 Authorization: Bearer <access_token>
 ```
 
-**Response:**
-```json
-{
-  "user_id": 1,
-  "name": "Veerendra",
-  "username": "veeru68",
-  "role": "user",
-  "status": "active"
-}
-```
-
-#### Update Profile
-**PATCH** `/api/profile/`
-
-Update user's display name and/or username.
-
-**Headers:**
-```
+#### **Delete Account**
+```http
+DELETE /api/profile/delete
 Authorization: Bearer <access_token>
 ```
 
-**Request Body:**
-```json
+### **Admin Operations**
+
+#### **System Statistics**
+```http
+GET /api/admin/stats
+Authorization: Bearer <admin_token>
+```
+
+#### **User Management**
+```http
+# Get all users
+GET /api/admin/users
+Authorization: Bearer <admin_token>
+
+# Get active users
+GET /api/admin/users/active
+Authorization: Bearer <admin_token>
+
+# Get inactive users
+GET /api/admin/users/inactive
+Authorization: Bearer <admin_token>
+
+# Search users by username
+GET /api/admin/users/search/username/{username}
+Authorization: Bearer <admin_token>
+
+# Search users by name
+GET /api/admin/users/search/name/{name}
+Authorization: Bearer <admin_token>
+
+# Get specific user
+GET /api/admin/users/{user_id}
+Authorization: Bearer <admin_token>
+```
+
+#### **Create User**
+```http
+POST /api/admin/users
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
 {
-  "name": "newName",
-  "username": "newUsername"
-}
-```
-
-**Note:** You can update either `name`, `username`, or both. At least one field is required.
-
-#### Update Password
-**PATCH** `/api/profile/password`
-
-Update user's password.
-
-**Rate Limit:** `5 per hour` - Sensitive operation
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-**Request Body:**
-```json
-{
-  "old_password": "OldPass@123",
-  "new_password": "NewPass@456",
-  "confirm_password": "NewPass@456"
-}
-```
-
-#### Deactivate Account
-**PATCH** `/api/profile/deactivate`
-
-Deactivate own account (soft delete).
-
-**Rate Limit**: 3 deactivations per hour per IP
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-#### Delete Account
-**DELETE** `/profile/`
-
-Delete own account (hard delete).
-
-**Headers:**
-```
-Authorization: Bearer <access_token>
-```
-
-### Admin Routes
-
-All admin routes require `Authorization: Bearer <access_token>` header with admin role.
-
-#### System Statistics
-**GET** `/api/admin/stats`
-
-Get comprehensive system statistics for admin dashboard.
-
-**Response:**
-```json
-{
-  "message": "System statistics retrieved successfully",
-  "statistics": {
-    "total_users": 25,
-    "active_users": 20,
-    "inactive_users": 5,
-    "admins": 2,
-    "regular_users": 23
-  }
-}
-```
-
-#### Get All Users
-**GET** `/api/admin/users`
-
-Retrieve the list of all users in the system.
-
-**Response:**
-```json
-[
-  {
-    "id": 1,
-    "name": "Veerendra",
-    "username": "veeru68",
-    "role": "user",
-    "status": "active"
-  },
-  {
-    "id": 2,
-    "name": "Administrator",
-    "username": "admin36",
-    "role": "admin",
-    "status": "active"
-  }
-]
-```
-
-#### Get Active Users
-**GET** `/api/admin/users/active`
-
-Retrieve all users with active status.
-
-**Response:**
-```json
-{
-  "message": "Active users found",
-  "users": [
-    {
-      "id": 1,
-      "name": "Veerendra",
-      "username": "veeru68",
-      "role": "user",
-      "status": "active"
-    }
-  ]
-}
-```
-
-#### Get Inactive Users
-**GET** `/api/admin/users/inactive`
-
-Retrieve all users with inactive status.
-
-**Response:**
-```json
-{
-  "message": "Inactive users found",
-  "users": [
-    {
-      "id": 3,
-      "name": "Inactive User",
-      "username": "inactive1",
-      "role": "user",
-      "status": "inactive"
-    }
-  ]
-}
-```
-
-#### Search Users by Username
-**GET** `/api/admin/users/search/username/<username>`
-
-Search for users by username (case-insensitive partial match).
-
-**Example:** `/admin/users/search/username/veer`
-
-**Response:**
-```json
-{
-  "message": "Found 1 user(s) matching 'veer'",
-  "users": [
-    {
-      "id": 1,
-      "name": "Veerendra",
-      "username": "veeru68",
-      "role": "user",
-      "status": "active"
-    }
-  ]
-}
-```
-
-#### Search Users by Name
-**GET** `/api/admin/users/search/name/<name>`
-
-Search for users by full name (case-insensitive partial match).
-
-**Example:** `/admin/users/search/name/Veerendra`
-
-#### Get User by ID
-**GET** `/api/admin/users/<user_id>`
-
-Get specific user details by ID.
-
-**Response:**
-```json
-{
-  "id": 1,
-  "name": "Veerendra",
-  "username": "veeru68",
-  "role": "user",
-  "status": "active"
-}
-```
-
-#### Create User
-**POST** `/api/admin/users`
-
-Create a new user with default password.
-
-**Rate Limit**: 10 user creations per hour per IP
-
-**Request Body:**
-```json
-{
-  "name": "New User",
-  "username": "newuser1",
+  "name": "Jane Doe",
+  "username": "janedoe123",
   "role": "user"
 }
 ```
 
-**Response:**
-```json
+#### **Update User**
+```http
+PATCH /api/admin/users/{user_id}
+Authorization: Bearer <admin_token>
+Content-Type: application/json
+
 {
-  "message": "User created successfully",
-  "default_password": "User@123",
-  "user": {
-    "id": 3,
-    "name": "New User",
-    "username": "newuser1",
-    "role": "user",
-    "status": "active"
-  }
-}
-```
-
-#### Update User
-**PATCH** `/api/admin/users/<user_id>`
-
-Update user details (name, username, role).
-
-**Request Body:**
-```json
-{
-  "name": "Updated Name",
-  "username": "newusername",
+  "name": "Jane Smith",
+  "username": "janesmith123",
   "role": "admin"
 }
 ```
 
-**Note:** You can update any combination of fields. At least one field is required.
-
-#### Activate User
-**PATCH** `/api/admin/users/<user_id>/activate`
-
-Activate a user account (set status to 'active').
-
-**Rate Limit**: 20 activations per hour per IP
-
-**Response:**
-```json
-{
-  "message": "User activated successfully",
-  "user": {
-    "id": 3,
-    "name": "User Name",
-    "username": "username",
-    "role": "user",
-    "status": "active"
-  }
-}
+#### **Delete User**
+```http
+DELETE /api/admin/users/{user_id}
+Authorization: Bearer <admin_token>
 ```
 
-#### Deactivate User
-**PATCH** `/api/admin/users/<user_id>/deactivate`
+#### **User Status Management**
+```http
+# Activate user
+PATCH /api/admin/users/{user_id}/activate
+Authorization: Bearer <admin_token>
 
-Deactivate a user account (set status to 'inactive').
-
-**Rate Limit**: 20 deactivations per hour per IP
-
-**Response:**
-```json
-{
-  "message": "User username deactivated"
-}
+# Deactivate user
+PATCH /api/admin/users/{user_id}/deactivate
+Authorization: Bearer <admin_token>
 ```
 
-#### Delete User
-**DELETE** `/api/admin/users/<user_id>`
-
-Permanently delete a user account (hard delete).
-
-**Rate Limit**: 5 deletions per hour per IP
-
-**Edge Cases:**
-- Prevents admin from deleting their own account
-- Validates user exists before deletion
-
-**Response:**
-```json
-{
-  "message": "User username deleted successfully"
-}
+#### **Password Reset Management**
+```http
+# Generate password reset token
+GET /api/admin/users/{user_id}/generate-reset-token
+Authorization: Bearer <admin_token>
 ```
 
-#### Generate Password Reset Token
-**GET** `/api/admin/users/<user_id>/generate-reset-token`
-
-Generate a password reset token for a specific user (Admin only).
-
-**Rate Limit:** `10 per hour` - Admin operation
-
-**Response:**
-```json
-{
-  "message": "Password reset token generated successfully",
-  "token": "abc123def456",
-  "expires_at": "2025-09-25T12:00:00Z",
-  "user": {
-    "id": 6,
-    "name": "Test User",
-    "username": "testuser123"
-  }
-}
-```
-
-**Security Features:**
-- **Admin Only**: Requires admin role authentication
-- **24-Hour Expiry**: Tokens expire in 24 hours
-- **One-Time Use**: Each token can only be used once
-- **Secure Generation**: Uses cryptographically secure token generation
-
-**Error Responses:**
-- `404 Not Found` - User not found
-- `400 Bad Request` - User is inactive
-
-#### Cleanup Expired Tokens
-**DELETE** `/api/admin/cleanup-expired-tokens`
-
-Clean up expired tokens from the database to improve performance (Admin only).
-
-**Rate Limit:** `5 per hour` - Maintenance operation
-
-**Response:**
-```json
-{
-  "message": "Cleanup completed successfully. Removed 5 expired tokens (3 JWT tokens, 2 reset tokens)"
-}
-```
-
-**What Gets Cleaned:**
-- **Expired JWT Tokens**: Revoked tokens older than 7 days
-- **Expired Reset Tokens**: Password reset tokens past expiration
-
-**Benefits:**
-- **Database Performance**: Fewer records = faster queries
-- **Storage Efficiency**: Prevents unlimited growth
-- **Security**: Removes old token data
-
-## Rate Limiting & Security
-
-AccessVault implements comprehensive rate limiting to protect against abuse, brute force attacks, and ensure optimal performance.
-
-### Rate Limiting Configuration
-
-All API endpoints are protected with appropriate rate limits based on their security sensitivity and usage patterns:
-
-#### Authentication Endpoints
-- **Register**: `5 per minute` - Prevents spam registrations
-- **Login**: `3 per minute` - Prevents brute force attacks  
-- **Logout**: `20 per minute` - Normal usage patterns
-- **Refresh Token**: `30 per minute` - Token refresh operations
-- **Password Reset**: `5 per minute` - Prevents token abuse
-
-#### Profile Management
-- **Get Profile**: `60 per minute` - Read operations
-- **Update Profile**: `20 per minute` - Profile modifications
-- **Update Password**: `5 per hour` - Sensitive operation
-- **Deactivate Account**: `3 per hour` - Critical action
-- **Delete Account**: `1 per hour` - Most critical action
-
-#### Admin Operations
-- **System Stats**: `30 per minute` - Dashboard data
-- **List Users**: `60 per minute` - User management
-- **Create User**: `10 per hour` - User creation
-- **Update User**: `20 per hour` - User modifications
-- **Delete User**: `5 per hour` - Critical admin action
-- **Activate/Deactivate**: `20 per hour` - User status changes
-- **Generate Reset Token**: `10 per hour` - Password reset tokens
-- **Cleanup Tokens**: `5 per hour` - Maintenance operations
-
-#### Health Monitoring
-- **Health Check**: `120 per minute` - Monitoring endpoints
-
-### Rate Limiting Features
-
-- **IP-Based Tracking**: Limits are applied per client IP address
-- **Memory Storage**: Uses in-memory storage for development
-- **Redis Support**: Production-ready with Redis for distributed systems
-- **Automatic Reset**: Limits reset based on time windows
-- **HTTP 429 Responses**: Clear rate limit exceeded responses
-
-### Configuration
-
-Rate limiting is configured in `src/extensions.py`:
-
-```python
-limiter = Limiter(
-    key_func=get_remote_address,   # Identifies clients by IP
-    storage_uri=redis_url,         # Redis storage (fallback to memory)
-    default_limits=["100 per day", "20 per hour", "5 per minute"]
-)
-```
-
-### Production Considerations
-
-- **Redis Storage**: Set `RATELIMIT_STORAGE_URL` environment variable for Redis
-- **Load Balancers**: Consider using consistent IP hashing
-- **Monitoring**: Track rate limit hits for security insights
-- **Tuning**: Adjust limits based on usage patterns
-
-## Token Management & Maintenance
-
-### JWT Authentication System
-
-AccessVault implements a comprehensive JWT authentication system with enhanced security features:
-
-#### Token Types
-- **Access Tokens**: Short-lived (1 hour) for API authentication
-- **Refresh Tokens**: Long-lived (7 days) for obtaining new access tokens
-- **Password Reset Tokens**: Admin-generated (24 hours) for password resets
-
-#### Security Features
-- **Token Rotation**: Refresh tokens are rotated on each use
-- **Token Revocation**: Immediate invalidation on logout
-- **Database Tracking**: All revoked tokens are stored and validated
-- **Automatic Expiry**: Tokens expire based on configured timeframes
-
-#### Token Cleanup
-
-**Manual Cleanup (Admin API):**
-```bash
-# Clean up expired tokens via API
+#### **System Maintenance**
+```http
+# Clean up expired tokens
 DELETE /api/admin/cleanup-expired-tokens
 Authorization: Bearer <admin_token>
 ```
 
-**Scheduled Cleanup (Script):**
-```bash
-# Run cleanup script manually
-python -m scripts.cleanup_tokens
+---
 
-# Or schedule with cron (daily at 2 AM)
-0 2 * * * cd /path/to/AccessVault && python -m scripts.cleanup_tokens
+## **Security Features**
+
+### **Authentication & Authorization**
+- **JWT Tokens** - Secure, stateless authentication
+- **Token Rotation** - Automatic refresh token rotation
+- **Token Revocation** - Database-backed token blacklist
+- **Role-Based Access** - User and Admin role separation
+
+### **Password Security**
+- **Bcrypt Hashing** - Industry-standard password hashing
+- **Strength Validation** - Enforced password complexity
+- **Password History** - Prevents password reuse
+
+### **Rate Limiting**
+- **Redis-Backed** - Distributed rate limiting
+- **Endpoint-Specific** - Custom limits per endpoint
+- **IP-Based Tracking** - Per-client rate limiting
+
+### **Input Validation**
+- **Field Validation** - Required field checking
+- **Format Validation** - Username and password patterns
+- **Length Limits** - DoS attack prevention
+- **SQL Injection Protection** - Parameterized queries
+
+---
+
+## **Rate Limiting Configuration**
+
+| Endpoint              | Rate Limit    | Purpose                     |
+|-----------------------|---------------|-----------------------------|
+| **Register**          | 5 per minute  | Prevent spam registrations  |
+| **Login**             | 3 per minute  | Prevent brute force attacks |
+| **Password Reset**    | 5 per minute  | Prevent token abuse         |
+| **Profile Update**    | 20 per minute | Normal usage patterns       |
+| **Admin Operations**  | 10-60 per hour| Administrative controls     |
+| **Health Check**      | 10 per minute | Monitoring endpoints        |
+
+---
+
+## **Configuration Options**
+
+### **Environment Variables**
+```bash
+# Required
+SECRET_KEY=your-secret-key
+JWT_SECRET_KEY=your-jwt-secret
+SQLALCHEMY_DATABASE_URI=postgresql://...
+
+# Optional
+RATELIMIT_STORAGE_URL=redis://localhost:6379/0
 ```
 
-**Cleanup Schedule Recommendations:**
-- **Development**: Weekly cleanup
-- **Production**: Daily cleanup
-- **High Traffic**: Twice daily cleanup
+### **Database Configuration**
+- **PostgreSQL** - Primary database
+- **Redis** - Rate limiting storage (optional)
+- **Connection Pooling** - Optimized for production
 
-### Password Reset Flow
+---
 
-1. **User requests password reset** from admin
-2. **Admin generates reset token** via API
-3. **User receives token** (via secure channel)
-4. **User resets password** using token
-5. **Token becomes invalid** after use
+## **Production Deployment**
 
-### Example: Complete Password Reset Flow
+### **Prerequisites**
+- Python 3.10+
+- PostgreSQL 12+
+- Redis 6+ (optional)
+- Nginx (recommended)
 
+### **Deployment Steps**
+1. **Set up production database**
+2. **Configure environment variables**
+3. **Run database migrations**
+4. **Set up Redis (optional)**
+5. **Deploy with Gunicorn**
+6. **Configure Nginx reverse proxy**
+
+---
+
+## **Monitoring & Logging**
+
+### **Health Monitoring**
+- **System Health** - Database, JWT, Flask status
+- **Performance Metrics** - Response times, error rates
+- **Security Events** - Failed logins, rate limit hits
+
+### **Logging**
+- **Structured Logging** - JSON format for easy parsing
+- **Log Rotation** - Daily rotation with retention
+- **Security Audit** - All authentication events logged
+
+---
+
+## **Testing**
+
+### **Manual Testing**
+1. **Start the application**
+2. **Access Swagger UI** at `/api/swagger-ui/`
+3. **Test endpoints** using the interactive interface
+4. **Verify rate limiting** by making multiple requests
+
+### **API Testing with curl**
 ```bash
-# 1. Admin generates reset token for user ID 6
-GET /api/admin/users/6/generate-reset-token
-Authorization: Bearer <admin_token>
+# Register a user
+curl -X POST http://127.0.0.1:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test User","username":"testuser123","password":"TestPass123!","confirm_password":"TestPass123!"}'
 
-# Response:
-{
-  "message": "Password reset token generated successfully",
-  "token": "abc123def456",
-  "expires_at": "2025-09-25T12:00:00Z",
-  "user": {
-    "id": 6,
-    "name": "Test User",
-    "username": "testuser123"
-  }
-}
-
-# 2. User resets password with the token
-POST /api/auth/reset-password
-{
-  "token": "abc123def456",
-  "new_password": "NewPassword123!",
-  "confirm_password": "NewPassword123!"
-}
-
-# Response:
-{
-  "message": "Password reset successfully"
-}
-
-# 3. User can now login with new password
-POST /api/auth/login
-{
-  "username": "testuser123",
-  "password": "NewPassword123!"
-}
+# Login
+curl -X POST http://127.0.0.1:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"testuser123","password":"TestPass123!"}'
 ```
 
-## Troubleshooting
+---
 
-### Common Issues
+## **Contributing**
 
-**Rate Limiting Issues:**
-- **HTTP 429 Errors**: Rate limit exceeded, wait before retrying
-- **Login Blocked**: Wait 1 minute after 3 failed login attempts
-- **Registration Blocked**: Wait 1 minute after 5 registration attempts
-- **Password Reset Blocked**: Wait 1 minute after 5 reset attempts
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-**Database Connection Issues:**
-- Ensure your PostgreSQL database is running and accessible
-- Verify the connection string format matches your provider
-- For Supabase, ensure `?sslmode=require` is included in the URL
+---
+
+## **Author**
+
+**Veerendra** - *Full Stack Developer*
+- GitHub: [@mr-veeru](https://github.com/mr-veeru)
+- LinkedIn: [Veerendra](https://www.linkedin.com/in/veerendra-bannuru-900934215)
+
+---
+
+## **Acknowledgments**
+
+- Flask community for the excellent framework
+- PostgreSQL team for the robust database
+- JWT.io for the authentication standard
+- All contributors and testers
+
+---

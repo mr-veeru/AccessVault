@@ -81,12 +81,33 @@ class Register(Resource):
     @limiter.limit("5 per minute")
     @auth_ns.expect(register_model)
     def post(self):
-        """Register a new user account"""
+        """
+        Register a new user account.
+        
+        Creates a new user account with validated credentials. Performs comprehensive
+        validation including field presence, format validation, and security checks.
+        
+        Returns:
+            tuple: (dict, int) - Success message with 201 status or error with 400/500 status
+            
+        Raises:
+            SQLAlchemyError: Database errors are handled globally
+            
+        Example:
+            POST /api/auth/register
+            {
+                "name": "John Doe",
+                "username": "johndoe123", 
+                "password": "SecurePass123!",
+                "confirm_password": "SecurePass123!"
+            }
+        """
         data = request.get_json()
         if not data:
             return {"error": "No JSON data provided"}, 400
         
         # Validate that all required fields are present
+        # This prevents incomplete registration attempts and provides clear error messages
         required_fields = {"name", "username", "password", "confirm_password"}
         missing_fields = [field for field in required_fields if field not in data]
         if not all(field in data for field in required_fields):
@@ -98,6 +119,7 @@ class Register(Resource):
             }, 400
         
         # Reject requests with unexpected fields for security
+        # This prevents potential injection attacks and ensures strict input validation
         if any(key not in required_fields for key in data.keys()):
             logger.warning(f"Registration failed - unexpected fields from IP: {request.remote_addr}")
             return {
@@ -105,11 +127,20 @@ class Register(Resource):
                 "required_fields": list(required_fields),
             }, 400
         
-        # Extract data from request
+        # Extract data from request with length validation
         name = data.get("name", "").strip()
         username = data.get("username", "").strip().lower()  # Convert to lowercase for case-insensitive usernames
         password = data.get("password")
         confirm_password = data.get("confirm_password")
+        
+        # Validate input lengths to prevent DoS attacks
+        # These limits match the database column constraints and prevent memory exhaustion
+        if len(name) > 100:
+            return {"error": "Name too long (max 100 characters)"}, 400
+        if len(username) > 80:
+            return {"error": "Username too long (max 80 characters)"}, 400
+        if len(password) > 200:
+            return {"error": "Password too long (max 200 characters)"}, 400
         
         # Validate name
         if not name or len(name) < 2:
@@ -159,7 +190,28 @@ class Login(Resource):
     @auth_ns.expect(login_model)
     @auth_ns.marshal_with(token_response_model, code=200)
     def post(self):
-        """Authenticate user and receive JWT tokens"""
+        """
+        Authenticate user and receive JWT tokens.
+        
+        Validates user credentials and returns access and refresh tokens upon successful
+        authentication. Implements rate limiting to prevent brute force attacks.
+        
+        Returns:
+            tuple: (dict, int) - Token response with 200 status or error with 400 status
+            
+        Security Features:
+            - Rate limited to 3 attempts per minute
+            - Case-insensitive username matching
+            - Secure password verification with bcrypt
+            - Account status validation (active users only)
+            
+        Example:
+            POST /api/auth/login
+            {
+                "username": "johndoe123",
+                "password": "SecurePass123!"
+            }
+        """
         data = request.get_json()
         if not data:
             return {"error": "No JSON data provided"}, 400
@@ -228,7 +280,24 @@ class Logout(Resource):
     @auth_ns.marshal_with(message_response_model, code=200)
     @jwt_required()
     def post(self):
-        """Logout user by revoking the current access token"""
+        """
+        Logout user by revoking the current access token.
+        
+        Immediately invalidates the current access token by adding it to the revoked
+        tokens table. This ensures the token cannot be used for further API calls.
+        
+        Returns:
+            tuple: (dict, int) - Success message with 200 status or error with 404 status
+            
+        Security Features:
+            - Token revocation is immediate and permanent
+            - Database-backed token blacklist
+            - User existence validation
+            
+        Example:
+            POST /api/auth/logout
+            Headers: Authorization: Bearer <access_token>
+        """
         user_id = get_jwt_identity()
         user = User.query.get(int(user_id))
         
@@ -249,7 +318,25 @@ class Refresh(Resource):
     @jwt_required(refresh=True)
     @active_required
     def post(self):
-        """Refresh JWT tokens with token rotation for security"""
+        """
+        Refresh JWT tokens with token rotation for security.
+        
+        Generates new access and refresh tokens while revoking the old refresh token.
+        Implements token rotation for enhanced security. Requires valid refresh token.
+        
+        Returns:
+            tuple: (dict, int) - New token response with 200 status or error with 404 status
+            
+        Security Features:
+            - Token rotation: old refresh token is immediately revoked
+            - User must be active (enforced by @active_required)
+            - Rate limited to 30 attempts per minute
+            - Database-backed token revocation
+            
+        Example:
+            POST /api/auth/refresh
+            Headers: Authorization: Bearer <refresh_token>
+        """
         user_id = get_jwt_identity()
         user = User.query.get(int(user_id))
         
