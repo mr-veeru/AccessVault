@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: accessvault-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: SQLALCHEMY_DATABASE_URI
+        sync: false
+      - key: RATELIMIT_STORAGE_URL
+        value: memory://
+      - key: PYTHON_VERSION
+        value: 3.11.0

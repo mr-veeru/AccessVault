@@ -399,24 +399,6 @@ RATELIMIT_STORAGE_URL=redis://localhost:6379/0
 
 ---
 
-## **Production Deployment**
-
-### **Prerequisites**
-- Python 3.10+
-- PostgreSQL 12+
-- Redis 6+ (optional)
-- Nginx (recommended)
-
-### **Deployment Steps**
-1. **Set up production database**
-2. **Configure environment variables**
-3. **Run database migrations**
-4. **Set up Redis (optional)**
-5. **Deploy with Gunicorn**
-6. **Configure Nginx reverse proxy**
-
----
-
 ## **Monitoring & Logging**
 
 ### **Health Monitoring**
