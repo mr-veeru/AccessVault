@@ -68,10 +68,24 @@ message_response_model = api.model('MessageResponse', {
     'message': fields.String(description='Response message')
 })
 
+# Standardized response models
+success_response_model = api.model('SuccessResponse', {
+    'status': fields.String(description='Response status', example='success'),
+    'message': fields.String(description='Response message'),
+    'count': fields.Integer(description='Number of items returned', required=False),
+    'data': fields.Raw(description='Response data')
+})
+
+error_response_model = api.model('ErrorResponse', {
+    'status': fields.String(description='Response status', example='error'),
+    'message': fields.String(description='Error message'),
+    'error_code': fields.String(description='Error code', required=False)
+})
+
 @admin_ns.route('/stats')
 class Stats(Resource):
     @limiter.limit("30 per minute")
-    @admin_ns.marshal_with(stats_model, code=200)
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def get(self):
@@ -82,24 +96,30 @@ class Stats(Resource):
         admins = User.query.filter_by(role="admin").count()
         regular_users = User.query.filter_by(role="user").count()
         
-        return {
+        stats_data = {
             "total_users": total_users,
             "active_users": active_users,
             "inactive_users": inactive_users,
             "admins": admins,
             "regular_users": regular_users
+        }
+        
+        return {
+            "status": "success",
+            "message": "Statistics fetched successfully",
+            "data": stats_data
         }, 200
 
 @admin_ns.route('/users')
 class Users(Resource):
     @limiter.limit("60 per minute")
-    @admin_ns.marshal_list_with(user_model, code=200)
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def get(self):
         """Get all users in the system"""
         users = User.query.all()
-        return [
+        users_data = [
             {
                 "id": user.id,
                 "name": user.name,
@@ -108,10 +128,18 @@ class Users(Resource):
                 "status": user.status
             }
             for user in users
-        ], 200
+        ]
+        
+        return {
+            "status": "success",
+            "message": "Users fetched successfully",
+            "count": len(users_data),
+            "data": users_data
+        }, 200
 
     @limiter.limit("10 per hour")
     @admin_ns.expect(create_user_model)
+    @admin_ns.marshal_with(success_response_model, code=201)
     @jwt_required()
     @role_required("admin")
     def post(self):
@@ -119,7 +147,11 @@ class Users(Resource):
         data = request.get_json()
         
         if not data:
-            return {"error": "No JSON data provided"}, 400
+            return {
+                "status": "error",
+                "message": "No JSON data provided",
+                "error_code": "NO_DATA"
+            }, 400
         
         # Check for required fields
         required_fields = ["name", "username", "role"]
@@ -127,9 +159,9 @@ class Users(Resource):
         
         if missing_fields:
             return {
-                "error": "Missing required fields",
-                "missing_fields": missing_fields,
-                "required_fields": required_fields
+                "status": "error",
+                "message": "Missing required fields",
+                "error_code": "MISSING_FIELDS"
             }, 400
         
         # Check for unexpected fields
@@ -139,9 +171,9 @@ class Users(Resource):
         
         if unexpected_fields:
             return {
-                "error": "Unexpected fields provided",
-                "unexpected_fields": list(unexpected_fields),
-                "expected_fields": list(expected_fields)
+                "status": "error",
+                "message": "Unexpected fields provided",
+                "error_code": "UNEXPECTED_FIELDS"
             }, 400
         
         name = data["name"].strip()
@@ -150,21 +182,35 @@ class Users(Resource):
         
         # Validate name
         if not name or len(name) < 2:
-            return {"error": "Name must be at least 2 characters long"}, 400
+            return {
+                "status": "error",
+                "message": "Name must be at least 2 characters long",
+                "error_code": "INVALID_NAME"
+            }, 400
         
         # Validate username format
         if not re.match(USERNAME_REGEX, username):
             return {
-                "error": "Username must be at least 3 characters, contain only letters and numbers, and have at least one letter and one number"
+                "status": "error",
+                "message": "Username must be at least 3 characters, contain only letters and numbers, and have at least one letter and one number",
+                "error_code": "INVALID_USERNAME"
             }, 400
         
         # Validate role
         if role not in ["user", "admin"]:
-            return {"error": "Role must be either 'user' or 'admin'"}, 400
+            return {
+                "status": "error",
+                "message": "Role must be either 'user' or 'admin'",
+                "error_code": "INVALID_ROLE"
+            }, 400
         
         # Check if username already exists
         if User.query.filter_by(username=username).first():
-            return {"error": "Username already exists"}, 400
+            return {
+                "status": "error",
+                "message": "Username already exists",
+                "error_code": "USERNAME_EXISTS"
+            }, 400
         
         # Create new user with default password
         default_password = "User@123"
@@ -183,27 +229,31 @@ class Users(Resource):
         
         logger.info(f"New user created by admin: {username} (ID: {new_user.id}) from IP: {request.remote_addr}")
         
+        user_data = {
+            "id": new_user.id,
+            "name": new_user.name,
+            "username": new_user.username,
+            "role": new_user.role,
+            "status": new_user.status,
+            "default_password": default_password
+        }
+        
         return {
+            "status": "success",
             "message": "User created successfully",
-            "default_password": default_password,
-            "user": {
-                "id": new_user.id,
-                "name": new_user.name,
-                "username": new_user.username,
-                "role": new_user.role,
-                "status": new_user.status
-            }
+            "data": user_data
         }, 201
 
 @admin_ns.route('/users/active')
 class ActiveUsers(Resource):
-    @admin_ns.marshal_list_with(user_model, code=200)
+    @limiter.limit("60 per minute")
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def get(self):
         """Get all active users"""
         users = User.query.filter_by(status="active").all()
-        return [
+        users_data = [
             {
                 "id": user.id,
                 "name": user.name,
@@ -212,17 +262,25 @@ class ActiveUsers(Resource):
                 "status": user.status
             }
             for user in users
-        ], 200
+        ]
+        
+        return {
+            "status": "success",
+            "message": "Active users fetched successfully",
+            "count": len(users_data),
+            "data": users_data
+        }, 200
 
 @admin_ns.route('/users/inactive')
 class InactiveUsers(Resource):
-    @admin_ns.marshal_list_with(user_model, code=200)
+    @limiter.limit("60 per minute")
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def get(self):
         """Get all inactive users"""
         users = User.query.filter_by(status="inactive").all()
-        return [
+        users_data = [
             {
                 "id": user.id,
                 "name": user.name,
@@ -231,17 +289,25 @@ class InactiveUsers(Resource):
                 "status": user.status
             }
             for user in users
-        ], 200
+        ]
+        
+        return {
+            "status": "success",
+            "message": "Inactive users fetched successfully",
+            "count": len(users_data),
+            "data": users_data
+        }, 200
 
 @admin_ns.route('/users/search/username/<username>')
 class SearchByUsername(Resource):
-    @admin_ns.marshal_list_with(user_model, code=200)
+    @limiter.limit("60 per minute")
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def get(self, username):
         """Search users by username (case-insensitive partial match)"""
         users = User.query.filter(User.username.ilike(f"%{username}%")).all()
-        return [
+        users_data = [
             {
                 "id": user.id,
                 "name": user.name,
@@ -250,17 +316,25 @@ class SearchByUsername(Resource):
                 "status": user.status
             }
             for user in users
-        ], 200
+        ]
+        
+        return {
+            "status": "success",
+            "message": f"Search results for username '{username}'",
+            "count": len(users_data),
+            "data": users_data
+        }, 200
 
 @admin_ns.route('/users/search/name/<name>')
 class SearchByName(Resource):
-    @admin_ns.marshal_list_with(user_model, code=200)
+    @limiter.limit("60 per minute")
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def get(self, name):
         """Search users by full name (case-insensitive partial match)"""
         users = User.query.filter(User.name.ilike(f"%{name}%")).all()
-        return [
+        users_data = [
             {
                 "id": user.id,
                 "name": user.name,
@@ -269,69 +343,127 @@ class SearchByName(Resource):
                 "status": user.status
             }
             for user in users
-        ], 200
+        ]
+        
+        return {
+            "status": "success",
+            "message": f"Search results for name '{name}'",
+            "count": len(users_data),
+            "data": users_data
+        }, 200
 
 @admin_ns.route('/users/<int:user_id>')
 class FindUserById(Resource):
     @limiter.limit("60 per minute")
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def get(self, user_id):
         """Get user by ID"""
         user = User.query.get(user_id)
         if not user:
-            return {"error": "User not found"}, 404
+            return {
+                "status": "error",
+                "message": "User not found",
+                "error_code": "USER_NOT_FOUND"
+            }, 404
         
-        return {
+        user_data = {
             "id": user.id,
             "name": user.name,
             "username": user.username,
             "role": user.role,
             "status": user.status
+        }
+        
+        return {
+            "status": "success",
+            "message": "User fetched successfully",
+            "data": user_data
         }, 200
 
     @limiter.limit("20 per hour")
     @admin_ns.expect(update_user_model)
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def patch(self, user_id):
         """Update user by ID"""
         user = User.query.get(user_id)
         if not user:
-            return {"error": "User not found"}, 404
+            return {
+                "status": "error",
+                "message": "User not found",
+                "error_code": "USER_NOT_FOUND"
+            }, 404
         
         data = request.get_json()
         
         if not data:
-            return {"error": "No JSON data provided"}, 400
+            return {
+                "status": "error",
+                "message": "No JSON data provided",
+                "error_code": "NO_DATA"
+            }, 400
+        
+        # Define allowed fields for security
+        allowed_fields = {"name", "username", "role"}
+        
+        # Check for unexpected fields
+        unexpected_fields = [field for field in data.keys() if field not in allowed_fields]
+        if unexpected_fields:
+            logger.warning(f"User update failed - unexpected fields: {unexpected_fields} from IP: {request.remote_addr}")
+            return {
+                "status": "error",
+                "message": "Unexpected fields in request",
+                "error_code": "UNEXPECTED_FIELDS"
+            }, 400
         
         # Check if at least one field is provided
-        if not any(field in data for field in ["name", "username", "role"]):
-            return {"error": "At least one field (name, username, or role) must be provided"}, 400
+        if not any(field in data for field in allowed_fields):
+            return {
+                "status": "error",
+                "message": "At least one field (name, username, or role) must be provided",
+                "error_code": "NO_FIELDS_PROVIDED"
+            }, 400
         
         # Update name if provided
         if "name" in data:
             name = data["name"].strip() if data["name"] else ""
             if not name or len(name) < 2:
-                return {"error": "Name must be at least 2 characters long"}, 400
+                return {
+                    "status": "error",
+                    "message": "Name must be at least 2 characters long",
+                    "error_code": "INVALID_NAME"
+                }, 400
             user.name = name
         
         # Update username if provided
         if "username" in data:
             username = data["username"].strip().lower() if data["username"] else ""
             if not username:
-                return {"error": "Username cannot be empty"}, 400
+                return {
+                    "status": "error",
+                    "message": "Username cannot be empty",
+                    "error_code": "EMPTY_USERNAME"
+                }, 400
             
             # Validate username format
             if not re.match(USERNAME_REGEX, username):
                 return {
-                    "error": "Username must be at least 3 characters, contain only letters and numbers, and have at least one letter and one number"
+                    "status": "error",
+                    "message": "Username must be at least 3 characters, contain only letters and numbers, and have at least one letter and one number",
+                    "error_code": "INVALID_USERNAME"
                 }, 400
             
             # Check if username already exists (excluding current user)
             existing_user = User.query.filter(User.username == username, User.id != user.id).first()
             if existing_user:
-                return {"error": "Username already exists"}, 400
+                return {
+                    "status": "error",
+                    "message": "Username already exists",
+                    "error_code": "USERNAME_EXISTS"
+                }, 400
             
             user.username = username
         
@@ -339,34 +471,53 @@ class FindUserById(Resource):
         if "role" in data:
             role = data["role"].strip() if data["role"] else ""
             if role not in ["user", "admin"]:
-                return {"error": "Role must be either 'user' or 'admin'"}, 400
+                return {
+                    "status": "error",
+                    "message": "Role must be either 'user' or 'admin'",
+                    "error_code": "INVALID_ROLE"
+                }, 400
             user.role = role
         
         db.session.commit()
         
         logger.info(f"User updated by admin: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
         
-        return {
+        user_data = {
             "id": user.id,
             "name": user.name,
             "username": user.username,
             "role": user.role,
             "status": user.status
+        }
+        
+        return {
+            "status": "success",
+            "message": "User updated successfully",
+            "data": user_data
         }, 200
 
     @limiter.limit("5 per hour")
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def delete(self, user_id):
         """Delete user by ID"""
         user = User.query.get(user_id)
         if not user:
-            return {"error": "User not found"}, 404
+            return {
+                "status": "error",
+                "message": "User not found",
+                "error_code": "USER_NOT_FOUND"
+            }, 404
         
         # Prevent admin from deleting their own account
         current_user_id = int(get_jwt_identity())  # JWT identity is now a string
         if user_id == current_user_id:
-            return {"error": "Cannot delete your own account"}, 400
+            return {
+                "status": "error",
+                "message": "Cannot delete your own account",
+                "error_code": "SELF_DELETE_NOT_ALLOWED"
+            }, 400
         
         username = user.username
         db.session.delete(user)
@@ -374,61 +525,86 @@ class FindUserById(Resource):
         
         logger.info(f"User deleted by admin: {username} (ID: {user_id}) from IP: {request.remote_addr}")
         
-        return {"message": f"User {username} deleted successfully"}, 200
+        return {
+            "status": "success",
+            "message": f"User {username} deleted successfully"
+        }, 200
 
 @admin_ns.route('/users/<int:user_id>/activate')
 class ActivateUser(Resource):
     @limiter.limit("20 per hour")
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def patch(self, user_id):
         """Activate user account"""
         user = User.query.get(user_id)
         if not user:
-            return {"error": "User not found"}, 404
+            return {
+                "status": "error",
+                "message": "User not found",
+                "error_code": "USER_NOT_FOUND"
+            }, 404
         
         user.status = "active"
         db.session.commit()
         
         logger.info(f"User activated by admin: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
         
-        return {
+        user_data = {
             "id": user.id,
             "name": user.name,
             "username": user.username,
             "role": user.role,
             "status": user.status
+        }
+        
+        return {
+            "status": "success",
+            "message": "User activated successfully",
+            "data": user_data
         }, 200
 
 @admin_ns.route('/users/<int:user_id>/deactivate')
 class DeactivateUser(Resource):
     @limiter.limit("20 per hour")
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required("admin")
     def patch(self, user_id):
         """Deactivate user account"""
         user = User.query.get(user_id)
         if not user:
-            return {"error": "User not found"}, 404
+            return {
+                "status": "error",
+                "message": "User not found",
+                "error_code": "USER_NOT_FOUND"
+            }, 404
         
         user.status = "inactive"
         db.session.commit()
         
         logger.info(f"User deactivated by admin: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
         
-        return {
+        user_data = {
             "id": user.id,
             "name": user.name,
             "username": user.username,
             "role": user.role,
             "status": user.status
+        }
+        
+        return {
+            "status": "success",
+            "message": "User deactivated successfully",
+            "data": user_data
         }, 200
 
 
 @admin_ns.route('/users/<int:user_id>/generate-reset-token')
 class GenerateResetToken(Resource):
     @limiter.limit("10 per hour")
-    @admin_ns.marshal_with(reset_token_response_model, code=200)
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required('admin')
     def get(self, user_id):
@@ -441,11 +617,19 @@ class GenerateResetToken(Resource):
         # Find the user by ID
         user = User.query.get(user_id)
         if not user:
-            return {"error": "User not found"}, 404
+            return {
+                "status": "error",
+                "message": "User not found",
+                "error_code": "USER_NOT_FOUND"
+            }, 404
         
         # Check if user is active
         if user.status != "active":
-            return {"error": "Cannot generate reset token for inactive user"}, 400
+            return {
+                "status": "error",
+                "message": "Cannot generate reset token for inactive user",
+                "error_code": "USER_INACTIVE"
+            }, 400
         
         # Generate secure token (24 bytes = 32 characters when base64 encoded)
         token = secrets.token_urlsafe(24)
@@ -465,8 +649,7 @@ class GenerateResetToken(Resource):
         
         logger.info(f"Password reset token generated for user: {user.username} (ID: {user.id}) by admin from IP: {request.remote_addr}")
         
-        return {
-            "message": "Password reset token generated successfully",
+        token_data = {
             "token": token,
             "expires_at": expires_at.isoformat() + "Z",
             "user": {
@@ -474,13 +657,19 @@ class GenerateResetToken(Resource):
                 "name": user.name,
                 "username": user.username
             }
+        }
+        
+        return {
+            "status": "success",
+            "message": "Password reset token generated successfully",
+            "data": token_data
         }, 200
 
 
 @admin_ns.route('/cleanup-expired-tokens')
 class CleanupExpiredTokens(Resource):
     @limiter.limit("5 per hour")
-    @admin_ns.marshal_with(message_response_model, code=200)
+    @admin_ns.marshal_with(success_response_model, code=200)
     @jwt_required()
     @role_required('admin')
     def delete(self):
@@ -516,6 +705,14 @@ class CleanupExpiredTokens(Resource):
         
         logger.info(f"Token cleanup completed by admin: {jwt_count} expired JWT tokens, {reset_count} expired reset tokens removed from IP: {request.remote_addr}")
         
+        cleanup_data = {
+            "total_cleaned": total_cleaned,
+            "jwt_tokens_removed": jwt_count,
+            "reset_tokens_removed": reset_count
+        }
+        
         return {
-            "message": f"Cleanup completed successfully. Removed {total_cleaned} expired tokens ({jwt_count} JWT tokens, {reset_count} reset tokens)"
+            "status": "success",
+            "message": f"Cleanup completed successfully. Removed {total_cleaned} expired tokens",
+            "data": cleanup_data
         }, 200

@@ -188,7 +188,6 @@ class Register(Resource):
 class Login(Resource):
     @limiter.limit("3 per minute")
     @auth_ns.expect(login_model)
-    @auth_ns.marshal_with(token_response_model, code=200)
     def post(self):
         """
         Authenticate user and receive JWT tokens.
@@ -314,7 +313,6 @@ class Logout(Resource):
 @auth_ns.route('/refresh')
 class Refresh(Resource):
     @limiter.limit("30 per minute")
-    @auth_ns.marshal_with(token_response_model, code=200)
     @jwt_required(refresh=True)
     @active_required
     def post(self):
