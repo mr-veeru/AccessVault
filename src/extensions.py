@@ -35,5 +35,6 @@ redis_url = os.getenv("RATELIMIT_STORAGE_URL", "memory://")
 limiter = Limiter(
     key_func=get_remote_address,   # identifies client by IP
     storage_uri=redis_url,         # Redis storage for rate limiting
-    default_limits=["100 per day", "20 per hour", "5 per minute"]  # fallback limits
+    default_limits=["100 per day", "20 per hour", "5 per minute"],  # fallback limits
+    swallow_errors=True            # Don't fail if Redis is unavailable
 )

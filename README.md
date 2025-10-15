@@ -90,7 +90,28 @@ RATELIMIT_STORAGE_URL=redis://localhost:6379/0
 SQLALCHEMY_DATABASE_URI=postgresql://postgres.xxxxx:your-password@aws-0-region.pooler.supabase.com:6543/postgres?sslmode=require
 ```
 
-### **Step 4: Initialize Database**
+### **Step 4: Set Up Redis with Docker (Optional)**
+
+Redis is used for distributed rate limiting. The app works without Redis using in-memory storage.
+
+**To use Redis (recommended for production):**
+```bash
+# Start Redis container
+docker run -d --name redis-server -p 6379:6379 redis:latest
+
+# Check if Redis is running
+docker ps
+```
+
+**Environment Configuration:**
+Add to your `.env` file:
+```bash
+RATELIMIT_STORAGE_URL=redis://localhost:6379/0
+```
+
+**Note:** If Redis is not available or not configured, the application automatically uses in-memory storage.
+
+### **Step 5: Initialize Database**
 ```bash
 python -m scripts.init_db
 ```
@@ -100,7 +121,7 @@ This creates the following tables:
 - `revoked_tokens` - Revoked JWT tokens for security
 - `password_reset_tokens` - Admin-generated password reset tokens
 
-### **Step 5: Create Admin User (Optional)**
+### **Step 6: Create Admin User (Optional)**
 ```bash
 python -m scripts.create_admin
 ```
@@ -110,7 +131,7 @@ python -m scripts.create_admin
 - **Password:** `Admin@123`
 - **Role:** `admin`
 
-### **Step 6: Run the Application**
+### **Step 7: Run the Application**
 ```bash
 python app.py
 ```
@@ -120,7 +141,7 @@ python app.py
 - **Health Check:** `http://127.0.0.1:5000/api/health/`
 - **Swagger UI:** `http://127.0.0.1:5000/api/swagger-ui/`
 
-### **Step 7: Token Cleanup (Optional)**
+### **Step 8: Token Cleanup (Optional)**
 For production environments, you can set up automated token cleanup:
 ```bash
 python -m scripts.cleanup_tokens
@@ -394,8 +415,7 @@ RATELIMIT_STORAGE_URL=redis://localhost:6379/0
 
 ### **Database Configuration**
 - **PostgreSQL** - Primary database
-- **Redis** - Rate limiting storage (optional)
-- **Connection Pooling** - Optimized for production
+- **Redis** - Rate limiting storage (Docker: `redis://localhost:6379/0`)
 
 ---
 

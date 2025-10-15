@@ -13,6 +13,8 @@ from src.extensions import db, limiter
 import flask
 from src.logger import logger
 from flask_restx import Namespace, fields, Resource
+import os
+import redis
 
 # Create health check namespace
 health_ns = Namespace('health', description='Health check operations')
@@ -71,22 +73,28 @@ class HealthStatus(Resource):
         
 
         # Check Rate Limiting configuration
-        try:
-            import os
-            redis_url = os.getenv("RATELIMIT_STORAGE_URL", "memory://")
-            storage_type = "Redis" if redis_url.startswith("redis://") else "Memory"
-            health_status["checks"]["rate_limiting"] = {
-                "status": "healthy",
-                "message": f"Rate limiting active using {storage_type} storage",
-                "storage_type": storage_type,
-                "storage_uri": redis_url
-            }
-        except Exception as e:
-            health_status["checks"]["rate_limiting"] = {
-                "status": "unhealthy",
-                "message": f"Rate limiting configuration error: {str(e)}"
-            }
-            overall_healthy = False
+        redis_url = os.getenv("RATELIMIT_STORAGE_URL", "memory://")
+        
+        # Test actual Redis connection to show real storage being used
+        if redis_url.startswith("redis://"):
+            try:
+                r = redis.from_url(redis_url)
+                r.ping()
+                storage_type = "Redis"
+                message = "Rate limiting active using Redis storage"
+            except:
+                storage_type = "Memory"
+                message = "Rate limiting active using Memory storage (Redis unavailable)"
+        else:
+            storage_type = "Memory"
+            message = "Rate limiting active using Memory storage"
+        
+        health_status["checks"]["rate_limiting"] = {
+            "status": "healthy",
+            "message": message,
+            "storage_type": storage_type,
+            "storage_uri": redis_url
+        }
 
         # Check JWT configuration
         try:

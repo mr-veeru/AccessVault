@@ -8,7 +8,6 @@ for the Flask application.
 from flask import jsonify
 from src.logger import logger
 from sqlalchemy.exc import SQLAlchemyError
-import redis
 
 
 def register_error_handlers(app):
@@ -65,26 +64,6 @@ def register_error_handlers(app):
             "error": "Invalid token",
             "message": "Please login again."
         }), 422
-
-    @app.errorhandler(redis.ConnectionError)
-    def handle_redis_connection_error(err):
-        """Handle Redis connection errors gracefully."""
-        logger.warning(f"Redis connection error: {str(err)}")
-        return jsonify({
-            "error": "Service temporarily unavailable",
-            "message": "Rate limiting service is currently unavailable. Please try again later.",
-            "status": "degraded"
-        }), 503
-
-    @app.errorhandler(redis.RedisError)
-    def handle_redis_error(err):
-        """Handle general Redis errors."""
-        logger.warning(f"Redis error: {str(err)}")
-        return jsonify({
-            "error": "Service temporarily unavailable",
-            "message": "Rate limiting service error. Please try again later.",
-            "status": "degraded"
-        }), 503
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(err: Exception):
