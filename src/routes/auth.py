@@ -6,7 +6,7 @@ All routes are prefixed with '/auth' and handle user account creation, authentic
 Uses Flask-RESTX for automatic Swagger documentation.
 """
 
-from flask import request
+from flask import request, g
 from flask_restx import Namespace, Resource, fields
 from src.extensions import db, bcrypt, api, limiter
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
@@ -51,7 +51,7 @@ reset_password_model = api.model('ResetPassword', {
 })
 
 # Regex validation patterns
-PASSWORD_REGEX = r"^(?=.*[A-Z])(?=.*\d)(?=.*[@#$%&*!?])[A-Za-z\d@#$%&*!?]{8,}$" # Requires: at least 6 chars, one uppercase, one digit, one special character
+PASSWORD_REGEX = r"^(?=.*[A-Z])(?=.*\d)(?=.*[@#$%&*!?])[A-Za-z\d@#$%&*!?]{8,}$" # Requires: at least 8 chars, one uppercase, one digit, one special character
 USERNAME_REGEX = r"^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z0-9]{3,}$" # Requires: at least 3 chars, alphanumeric only, at least one letter and one digit
 
 def is_token_revoked(jwt_header, jwt_payload):
@@ -168,7 +168,7 @@ class Register(Resource):
         if not re.match(PASSWORD_REGEX, password):
             logger.warning(f"Registration failed - weak password from IP: {request.remote_addr}")
             return {
-                "error": "Password must be at least 6 characters long, include one uppercase letter, one number, and one special character (@,#,$,%,&,*,!,?)"
+                "error": "Password must be at least 8 characters long, include one uppercase letter, one number, and one special character (@,#,$,%,&,*,!,?)"
             }, 400
         
         # Hash the password using bcrypt for secure storage
@@ -335,8 +335,7 @@ class Refresh(Resource):
             POST /api/auth/refresh
             Headers: Authorization: Bearer <refresh_token>
         """
-        user_id = get_jwt_identity()
-        user = User.query.get(int(user_id))
+        user = g.current_user
         
         # Get the current refresh token's JTI to revoke it
         current_jti = get_jwt()['jti']
@@ -423,7 +422,6 @@ class ResetPassword(Resource):
         reset_token.used = True
         
         db.session.commit()
-        
         logger.info(f"Password reset successfully for user: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
         
         return {"message": "Password reset successfully"}, 200

@@ -6,7 +6,7 @@ updating profile information, changing passwords, and account management.
 Uses Flask-RESTX for automatic Swagger documentation.
 """
 
-from flask import request
+from flask import request, g
 from flask_restx import Namespace, Resource, fields
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.models import User
@@ -47,8 +47,7 @@ class Profile(Resource):
     @active_required
     def get(self):
         """Get current user's profile information"""
-        user_id = get_jwt_identity()  # JWT identity is now a string
-        user = User.query.get(int(user_id))
+        user = g.current_user
         logger.info(f"User profile fetched successfully: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
         return {
             "user_id": user.id,
@@ -65,8 +64,7 @@ class Profile(Resource):
     def patch(self):
         """Update current user's profile information"""
         data = request.get_json()
-        user_id = get_jwt_identity()
-        user = User.query.get(int(user_id))
+        user = g.current_user
                 
         if not data:
             logger.warning(f"Profile update failed - no JSON data provided from IP: {request.remote_addr}")
@@ -138,8 +136,7 @@ class UpdatePassword(Resource):
     @active_required
     def patch(self):
         """Update user password"""
-        user_id = get_jwt_identity()  # JWT identity is now a string
-        user = User.query.get(int(user_id))
+        user = g.current_user
         
         data = request.get_json()
         
@@ -172,7 +169,7 @@ class UpdatePassword(Resource):
         if not re.match(PASSWORD_REGEX, new_password):
             logger.warning(f"Password update failed - invalid new password format from IP: {request.remote_addr}")
             return {
-                "error": "Password must be at least 6 characters with at least one uppercase letter, one number, and one special character (@ # $ % & * ! ?)"
+                "error": "Password must be at least 8 characters with at least one uppercase letter, one number, and one special character (@ # $ % & * ! ?)"
             }, 400
         
         # Check if passwords match
@@ -188,7 +185,6 @@ class UpdatePassword(Resource):
         # Update password
         user.password = bcrypt.generate_password_hash(new_password).decode('utf-8')
         db.session.commit()
-        
         logger.info(f"Password updated for user: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
         
         return {"message": "Password updated successfully"}, 200
@@ -200,8 +196,7 @@ class DeactivateAccount(Resource):
     @active_required
     def patch(self):
         """Deactivate current user's account"""
-        user_id = get_jwt_identity()  # JWT identity is now a string
-        user = User.query.get(int(user_id))
+        user = g.current_user
         
         user.status = "inactive"
         db.session.commit()
@@ -217,13 +212,12 @@ class DeleteAccount(Resource):
     @active_required
     def delete(self):
         """Permanently delete current user's account"""
-        user_id = get_jwt_identity()  # JWT identity is now a string
-        user = User.query.get(int(user_id))
+        user = g.current_user
         
         username = user.username
         db.session.delete(user)
         db.session.commit()
         
-        logger.info(f"Account deleted for user: {username} (ID: {user_id}) from IP: {request.remote_addr}")
+        logger.info(f"Account deleted for user: {username} (ID: {user.id}) from IP: {request.remote_addr}")
         
         return {"message": f"Account {username} deleted successfully"}, 200

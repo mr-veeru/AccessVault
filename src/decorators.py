@@ -6,7 +6,7 @@ and user status validation.
 """
 
 from functools import wraps
-from flask import jsonify
+from flask import jsonify, g
 from flask_jwt_extended import get_jwt_identity, jwt_required, get_jwt
 from src.models import User
 
@@ -38,6 +38,9 @@ def active_required(fn):
         # Check if user is active
         if user.status != "active":
             return {"error": "Account is deactivated. Please contact admin."}, 403
+        
+        # Store user in Flask's g object to avoid duplicate queries
+        g.current_user = user
         
         # User is active, proceed with the original function
         return fn(*args, **kwargs)

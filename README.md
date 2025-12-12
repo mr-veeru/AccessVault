@@ -157,207 +157,8 @@ python -m scripts.cleanup_tokens
 
 ## **API Documentation**
 
-### **Health Check**
-```http
-GET /api/health/
-```
-**Purpose:** Monitor system health and connectivity
-**Response:** System status, database connectivity, JWT configuration, rate limiting status
-
-### **Authentication Endpoints**
-
-#### **Register User**
-```http
-POST /api/auth/register
-Content-Type: application/json
-
-{
-  "name": "Veerendra",
-  "username": "veeru123",
-  "password": "SecurePass123!",
-  "confirm_password": "SecurePass123!"
-}
-```
-
-#### **Login**
-```http
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "username": "veeru123",
-  "password": "SecurePass123!"
-}
-```
-**Response:**
-```json
-{
-  "message": "Login successful",
-  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
-  "refresh_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
-}
-```
-
-#### **Logout**
-```http
-POST /api/auth/logout
-Authorization: Bearer <access_token>
-```
-
-#### **Refresh Tokens**
-```http
-POST /api/auth/refresh
-Authorization: Bearer <refresh_token>
-```
-
-#### **Reset Password**
-```http
-POST /api/auth/reset-password
-Content-Type: application/json
-
-{
-  "token": "reset-token-from-admin",
-  "new_password": "NewSecurePass123!",
-  "confirm_password": "NewSecurePass123!"
-}
-```
-
-### **Profile Management**
-
-#### **Get Profile**
-```http
-GET /api/profile/
-Authorization: Bearer <access_token>
-```
-
-#### **Update Profile**
-```http
-PATCH /api/profile/
-Authorization: Bearer <access_token>
-Content-Type: application/json
-
-{
-  "name": "Veerendra",
-  "username": "veeru66"
-}
-```
-
-#### **Change Password**
-```http
-PATCH /api/profile/password
-Authorization: Bearer <access_token>
-Content-Type: application/json
-
-{
-  "old_password": "OldPassword123!",
-  "new_password": "NewPassword123!",
-  "confirm_password": "NewPassword123!"
-}
-```
-
-#### **Deactivate Account**
-```http
-PATCH /api/profile/deactivate
-Authorization: Bearer <access_token>
-```
-
-#### **Delete Account**
-```http
-DELETE /api/profile/delete
-Authorization: Bearer <access_token>
-```
-
-### **Admin Operations**
-
-#### **System Statistics**
-```http
-GET /api/admin/stats
-Authorization: Bearer <admin_token>
-```
-
-#### **User Management**
-```http
-# Get all users
-GET /api/admin/users
-Authorization: Bearer <admin_token>
-
-# Get active users
-GET /api/admin/users/active
-Authorization: Bearer <admin_token>
-
-# Get inactive users
-GET /api/admin/users/inactive
-Authorization: Bearer <admin_token>
-
-# Search users by username
-GET /api/admin/users/search/username/{username}
-Authorization: Bearer <admin_token>
-
-# Search users by name
-GET /api/admin/users/search/name/{name}
-Authorization: Bearer <admin_token>
-
-# Get specific user
-GET /api/admin/users/{user_id}
-Authorization: Bearer <admin_token>
-```
-
-#### **Create User**
-```http
-POST /api/admin/users
-Authorization: Bearer <admin_token>
-Content-Type: application/json
-
-{
-  "name": "Jane Doe",
-  "username": "janedoe123",
-  "role": "user"
-}
-```
-
-#### **Update User**
-```http
-PATCH /api/admin/users/{user_id}
-Authorization: Bearer <admin_token>
-Content-Type: application/json
-
-{
-  "name": "Jane Smith",
-  "username": "janesmith123",
-  "role": "admin"
-}
-```
-
-#### **Delete User**
-```http
-DELETE /api/admin/users/{user_id}
-Authorization: Bearer <admin_token>
-```
-
-#### **User Status Management**
-```http
-# Activate user
-PATCH /api/admin/users/{user_id}/activate
-Authorization: Bearer <admin_token>
-
-# Deactivate user
-PATCH /api/admin/users/{user_id}/deactivate
-Authorization: Bearer <admin_token>
-```
-
-#### **Password Reset Management**
-```http
-# Generate password reset token
-GET /api/admin/users/{user_id}/generate-reset-token
-Authorization: Bearer <admin_token>
-```
-
-#### **System Maintenance**
-```http
-# Clean up expired tokens
-DELETE /api/admin/cleanup-expired-tokens
-Authorization: Bearer <admin_token>
-```
+Complete API documentation is available in **[API.md](API.md)**.
+**API Base URL:** `http://127.0.0.1:5000/api`
 
 ---
 
@@ -387,16 +188,9 @@ Authorization: Bearer <admin_token>
 
 ---
 
-## **Rate Limiting Configuration**
+## **Rate Limiting**
 
-| Endpoint              | Rate Limit    | Purpose                     |
-|-----------------------|---------------|-----------------------------|
-| **Register**          | 5 per minute  | Prevent spam registrations  |
-| **Login**             | 3 per minute  | Prevent brute force attacks |
-| **Password Reset**    | 5 per minute  | Prevent token abuse         |
-| **Profile Update**    | 20 per minute | Normal usage patterns       |
-| **Admin Operations**  | 10-60 per hour| Administrative controls     |
-| **Health Check**      | 10 per minute | Monitoring endpoints        |
+Rate limiting is configured for all endpoints to prevent abuse. See [API.md](API.md) for detailed rate limit information.
 
 ---
 
@@ -441,19 +235,6 @@ RATELIMIT_STORAGE_URL=redis://localhost:6379/0
 3. **Test endpoints** using the interactive interface
 4. **Verify rate limiting** by making multiple requests
 
-### **API Testing with curl**
-```bash
-# Register a user
-curl -X POST http://127.0.0.1:5000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test User","username":"testuser123","password":"TestPass123!","confirm_password":"TestPass123!"}'
-
-# Login
-curl -X POST http://127.0.0.1:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser123","password":"TestPass123!"}'
-```
-
 ---
 
 ## **Contributing**
@@ -466,19 +247,16 @@ curl -X POST http://127.0.0.1:5000/api/auth/login \
 
 ---
 
-## **Author**
+<div align="center">
 
-**Veerendra** - *Full Stack Developer*
-- GitHub: [@mr-veeru](https://github.com/mr-veeru)
-- LinkedIn: [Veerendra](https://www.linkedin.com/in/veerendra-bannuru-900934215)
+## 📞 Contact
 
----
+**Bannuru Veerendra**
 
-## **Acknowledgments**
-
-- Flask community for the excellent framework
-- PostgreSQL team for the robust database
-- JWT.io for the authentication standard
-- All contributors and testers
+[![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/mr-veeru)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/veerendra-bannuru-900934215)
+[![Gmail](https://img.shields.io/badge/Gmail-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:mr.veeru68@gmail.com)
 
 ---
+
+</div>

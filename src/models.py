@@ -34,6 +34,14 @@ class User(db.Model):
     role = db.Column(db.String(20), default="user")      # User role: 'user' or 'admin'
     status = db.Column(db.String(20), default="active")  # Account status: 'active' or 'inactive'
     
+    # Database indexes for performance optimization
+    # These indexes improve query performance for frequently filtered fields
+    __table_args__ = (
+        db.Index('idx_users_status', 'status'),      # For filtering active/inactive users
+        db.Index('idx_users_role', 'role'),         # For filtering by user/admin role
+        db.Index('idx_users_status_role', 'status', 'role'),  # Composite index for combined filters
+    )
+    
     def __repr__(self):
         """String representation of the User object for debugging."""
         return f"<User {self.username}>"
@@ -60,6 +68,12 @@ class RevokedToken(db.Model):
     # Token metadata
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     revoked_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
+    
+    # Database indexes for performance
+    __table_args__ = (
+        db.Index('idx_revoked_tokens_user_id', 'user_id'),
+        db.Index('idx_revoked_tokens_revoked_at', 'revoked_at'),
+    )
     
     def __repr__(self):
         """String representation of the RevokedToken object for debugging."""
@@ -92,6 +106,13 @@ class PasswordResetToken(db.Model):
     expires_at = db.Column(db.DateTime, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
     used = db.Column(db.Boolean, default=False, nullable=False)
+    
+    # Database indexes for performance
+    __table_args__ = (
+        db.Index('idx_reset_tokens_user_id', 'user_id'),
+        db.Index('idx_reset_tokens_expires_at', 'expires_at'),
+        db.Index('idx_reset_tokens_used', 'used'),
+    )
     
     def __repr__(self):
         """String representation for debugging."""
