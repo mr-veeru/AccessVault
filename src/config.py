@@ -28,3 +28,8 @@ class Config:
     # JWT Token Configuration
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)  # Access token expires in 1 hour
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=7)  # Refresh token expires in 7 days
+    
+    # CORS Configuration
+    # Comma-separated list of allowed origins (e.g., "http://localhost:3000,https://example.com")
+    # Use "*" for development only (allows all origins)
+    CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")  # Default: allow all origins

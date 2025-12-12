@@ -7,6 +7,7 @@ AccessVault is a **production-ready REST API** that provides secure user managem
 - **JWT Authentication** - Secure token-based authentication
 - **Role-Based Access Control** - User and Admin roles
 - **Rate Limiting** - Redis-backed protection against abuse
+- **CORS Support** - Cross-origin resource sharing for frontend integration
 - **Token Management** - Automatic token rotation and revocation
 - **Password Security** - Bcrypt hashing with strength validation
 - **Admin Dashboard** - Complete user management interface
@@ -23,7 +24,7 @@ AccessVault/
 ├── 📁 src/                   # Core application package
 │   ├── 📄 __init__.py        # Package initialization & global error handlers
 │   ├── 📄 models.py          # Database models (User, RevokedToken, PasswordResetToken)
-│   ├── 📄 extensions.py      # Flask extensions (db, jwt, bcrypt, limiter, api)
+│   ├── 📄 extensions.py      # Flask extensions (db, jwt, bcrypt, limiter, cors, api)
 │   ├── 📄 decorators.py      # Access control decorators
 │   ├── 📄 config.py          # Configuration management
 │   ├── 📄 logger.py          # Logging configuration
@@ -67,6 +68,7 @@ pip install -r requirements.txt
 - `Flask-JWT-Extended` - JWT token management
 - `Flask-Bcrypt` - Password hashing
 - `Flask-Limiter` - Rate limiting
+- `Flask-CORS` - Cross-origin resource sharing
 - `PostgreSQL` - Database
 - `Redis` - Rate limiting storage (optional)
 
@@ -83,6 +85,11 @@ JWT_SECRET_KEY=your-jwt-secret-key-here
 
 # Rate Limiting (Optional - defaults to memory storage)
 RATELIMIT_STORAGE_URL=redis://localhost:6379/0
+
+# CORS Configuration (Optional - defaults to allow all origins)
+# For production, specify allowed origins (comma-separated)
+# CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+# For development, leave unset to allow all origins (*)
 ```
 
 **For Supabase users:**
@@ -180,6 +187,13 @@ Complete API documentation is available in **[API.md](API.md)**.
 - **Endpoint-Specific** - Custom limits per endpoint
 - **IP-Based Tracking** - Per-client rate limiting
 
+### **CORS (Cross-Origin Resource Sharing)**
+- **Configurable Origins** - Set allowed frontend domains via `CORS_ORIGINS`
+- **Development Mode** - Allows all origins by default (`*`)
+- **Production Ready** - Restrict to specific domains for security
+- **Credential Support** - Enables JWT token authentication from frontend
+- **Preflight Support** - Handles OPTIONS requests automatically
+
 ### **Input Validation**
 - **Field Validation** - Required field checking
 - **Format Validation** - Username and password patterns
@@ -205,7 +219,13 @@ SQLALCHEMY_DATABASE_URI=postgresql://...
 
 # Optional
 RATELIMIT_STORAGE_URL=redis://localhost:6379/0
+CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 ```
+
+**CORS Configuration:**
+- **Development**: Leave `CORS_ORIGINS` unset to allow all origins (`*`)
+- **Production**: Set `CORS_ORIGINS` to specific frontend domains (comma-separated)
+- **Example**: `CORS_ORIGINS=https://app.example.com,https://admin.example.com`
 
 ### **Database Configuration**
 - **PostgreSQL** - Primary database

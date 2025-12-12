@@ -14,5 +14,10 @@ services:
         sync: false
       - key: RATELIMIT_STORAGE_URL
         value: memory://
+      - key: CORS_ORIGINS
+        sync: false
+        # Optional: Set to your frontend domain(s) in Render dashboard
+        # Example: https://yourdomain.com,https://www.yourdomain.com
+        # Leave unset to allow all origins (development mode)
       - key: PYTHON_VERSION
         value: 3.11.0
