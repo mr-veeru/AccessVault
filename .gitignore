@@ -1,5 +1,7 @@
-# Python cachev
+# Python cache
 __pycache__/
+*.py[cod]
+*$py.class
 
 # Config 
 .env
@@ -10,3 +12,6 @@ logs/
 
 # Rate limiter storage
 limiter_storage/
+
+# Flask migrations (keep migrations directory, ignore cache)
+migrations/versions/__pycache__/

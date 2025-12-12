@@ -1,5 +1,6 @@
 import logging
 from logging.handlers import TimedRotatingFileHandler
+from pythonjsonlogger import jsonlogger
 import os
 import sys
 
@@ -9,7 +10,27 @@ if not os.path.exists("logs"):
 
 # Logger name
 logger = logging.getLogger("accessvault")
-logger.setLevel(logging.INFO)  # Can change to DEBUG, WARNING, etc.
+
+# Get log level from config (defaults to INFO if not set)
+# Import here to avoid circular imports
+def get_log_level():
+    """Get log level from environment or config, defaulting to INFO."""
+    from src.config import Config
+    log_level_str = Config.LOG_LEVEL
+    
+    # Convert string to logging level constant
+    log_levels = {
+        'DEBUG': logging.DEBUG,
+        'INFO': logging.INFO,
+        'WARNING': logging.WARNING,
+        'ERROR': logging.ERROR,
+        'CRITICAL': logging.CRITICAL
+    }
+    
+    # Default to INFO if invalid level provided
+    return log_levels.get(log_level_str, logging.INFO)
+
+logger.setLevel(get_log_level())
 
 # Clear any existing handlers to avoid duplicates
 logger.handlers.clear()
@@ -35,7 +56,7 @@ class WindowsSafeTimedRotatingFileHandler(TimedRotatingFileHandler):
 # when='midnight' → rotate at midnight
 # interval=1 → every 1 day
 # backupCount=7 → keep only 7 days of logs
-handler = WindowsSafeTimedRotatingFileHandler(
+file_handler = WindowsSafeTimedRotatingFileHandler(
     log_file,
     when="midnight",
     interval=1,
@@ -46,16 +67,22 @@ handler = WindowsSafeTimedRotatingFileHandler(
 )
 
 # Log file name will include date automatically by handler using suffix
-handler.suffix = "%Y-%m-%d.log"
+file_handler.suffix = "%Y-%m-%d.log"
 
-# Log format
-formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-handler.setFormatter(formatter)
+# JSON formatter for structured logging
+# Format includes: timestamp, level, logger name, message, and any extra fields
+json_formatter = jsonlogger.JsonFormatter(
+    '%(asctime)s %(name)s %(levelname)s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    json_ensure_ascii=False
+)
+file_handler.setFormatter(json_formatter)
 
-# Add handler to logger
-logger.addHandler(handler)
+# Add file handler to logger
+logger.addHandler(file_handler)
 
-# Optional: also log to console
+# Console handler with human-readable format (for development)
 console_handler = logging.StreamHandler()
-console_handler.setFormatter(formatter)
+console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+console_handler.setFormatter(console_formatter)
 logger.addHandler(console_handler)

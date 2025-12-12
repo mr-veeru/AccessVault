@@ -9,7 +9,7 @@ Version: 1.0.0
 
 from flask import Flask, jsonify
 from src.config import Config
-from src.extensions import db, jwt, bcrypt, limiter, cors
+from src.extensions import db, jwt, bcrypt, limiter, cors, migrate
 from src.routes import health_ns, auth_ns, profile_ns, admin_ns
 from src import register_error_handlers
 from src.logger import logger
@@ -26,6 +26,7 @@ def create_app():
 
     # Initialize extensions
     db.init_app(app)
+    migrate.init_app(app, db)  # Initialize Flask-Migrate for database migrations
     api.init_app(app)
     jwt.init_app(app)
     bcrypt.init_app(app)

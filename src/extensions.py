@@ -13,6 +13,7 @@ from flask_bcrypt import Bcrypt
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_cors import CORS
+from flask_migrate import Migrate
 import os
 
 # Initialize Flask extensions
@@ -21,6 +22,7 @@ db = SQLAlchemy()      # Database ORM for PostgreSQL operations
 jwt = JWTManager()
 bcrypt = Bcrypt()
 cors = CORS()          # CORS support for cross-origin requests
+migrate = Migrate()    # Database migration management (initialized with app and db)
 
 # Flask-RESTX API for automatic Swagger documentation
 api = Api(

@@ -119,8 +119,22 @@ RATELIMIT_STORAGE_URL=redis://localhost:6379/0
 **Note:** If Redis is not available or not configured, the application automatically uses in-memory storage.
 
 ### **Step 5: Initialize Database**
+
+**Option 1: Automated (Recommended for first-time setup)**
 ```bash
 python -m scripts.init_db
+```
+
+**Option 2: Manual (For more control)**
+```bash
+# Initialize migrations directory (first time only)
+flask db init
+
+# Create initial migration from models
+flask db migrate -m "Initial migration"
+
+# Apply migration to create tables
+flask db upgrade
 ```
 
 This creates the following tables:
@@ -169,84 +183,6 @@ Complete API documentation is available in **[API.md](API.md)**.
 
 ---
 
-## **Security Features**
-
-### **Authentication & Authorization**
-- **JWT Tokens** - Secure, stateless authentication
-- **Token Rotation** - Automatic refresh token rotation
-- **Token Revocation** - Database-backed token blacklist
-- **Role-Based Access** - User and Admin role separation
-
-### **Password Security**
-- **Bcrypt Hashing** - Industry-standard password hashing
-- **Strength Validation** - Enforced password complexity
-- **Password History** - Prevents password reuse
-
-### **Rate Limiting**
-- **Redis-Backed** - Distributed rate limiting
-- **Endpoint-Specific** - Custom limits per endpoint
-- **IP-Based Tracking** - Per-client rate limiting
-
-### **CORS (Cross-Origin Resource Sharing)**
-- **Configurable Origins** - Set allowed frontend domains via `CORS_ORIGINS`
-- **Development Mode** - Allows all origins by default (`*`)
-- **Production Ready** - Restrict to specific domains for security
-- **Credential Support** - Enables JWT token authentication from frontend
-- **Preflight Support** - Handles OPTIONS requests automatically
-
-### **Input Validation**
-- **Field Validation** - Required field checking
-- **Format Validation** - Username and password patterns
-- **Length Limits** - DoS attack prevention
-- **SQL Injection Protection** - Parameterized queries
-
----
-
-## **Rate Limiting**
-
-Rate limiting is configured for all endpoints to prevent abuse. See [API.md](API.md) for detailed rate limit information.
-
----
-
-## **Configuration Options**
-
-### **Environment Variables**
-```bash
-# Required
-SECRET_KEY=your-secret-key
-JWT_SECRET_KEY=your-jwt-secret
-SQLALCHEMY_DATABASE_URI=postgresql://...
-
-# Optional
-RATELIMIT_STORAGE_URL=redis://localhost:6379/0
-CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
-```
-
-**CORS Configuration:**
-- **Development**: Leave `CORS_ORIGINS` unset to allow all origins (`*`)
-- **Production**: Set `CORS_ORIGINS` to specific frontend domains (comma-separated)
-- **Example**: `CORS_ORIGINS=https://app.example.com,https://admin.example.com`
-
-### **Database Configuration**
-- **PostgreSQL** - Primary database
-- **Redis** - Rate limiting storage (Docker: `redis://localhost:6379/0`)
-
----
-
-## **Monitoring & Logging**
-
-### **Health Monitoring**
-- **System Health** - Database, JWT, Flask status
-- **Performance Metrics** - Response times, error rates
-- **Security Events** - Failed logins, rate limit hits
-
-### **Logging**
-- **Structured Logging** - JSON format for easy parsing
-- **Log Rotation** - Daily rotation with retention
-- **Security Audit** - All authentication events logged
-
----
-
 ## **Testing**
 
 ### **Manual Testing**
@@ -254,16 +190,6 @@ CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
 2. **Access Swagger UI** at `/api/swagger-ui/`
 3. **Test endpoints** using the interactive interface
 4. **Verify rate limiting** by making multiple requests
-
----
-
-## **Contributing**
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
 
 ---
 

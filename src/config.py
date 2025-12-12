@@ -33,3 +33,7 @@ class Config:
     # Comma-separated list of allowed origins (e.g., "http://localhost:3000,https://example.com")
     # Use "*" for development only (allows all origins)
     CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")  # Default: allow all origins
+    
+    # Logging Configuration
+    # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()  # Default: INFO
