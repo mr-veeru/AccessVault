@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 import sys
 from sqlalchemy import text
 from flask import current_app as app
-from src.extensions import db, limiter
+from src.extensions import db, limiter, blocklist_redis
 import flask
 from src.logger import logger
 from flask_restx import Namespace, fields, Resource
@@ -72,29 +72,32 @@ class HealthStatus(Resource):
             overall_healthy = False
         
 
-        # Check Rate Limiting configuration
+        # Check Redis configuration (Rate Limiting & Token Blocklist)
         redis_url = os.getenv("RATELIMIT_STORAGE_URL", "memory://")
+        blocklist_redis_url = os.getenv("BLOCKLIST_REDIS_URL", redis_url)
         
-        # Test actual Redis connection to show real storage being used
-        if redis_url.startswith("redis://"):
+        def check_redis(uri, client=None):
+            """Check Redis connection and return health status."""
+            if not uri.startswith("redis://"):
+                return {"status": "healthy", "type": "Memory", "connected": False, "uri": uri}
             try:
-                r = redis.from_url(redis_url)
-                r.ping()
-                storage_type = "Redis"
-                message = "Rate limiting active using Redis storage"
-            except:
-                storage_type = "Memory"
-                message = "Rate limiting active using Memory storage (Redis unavailable)"
-        else:
-            storage_type = "Memory"
-            message = "Rate limiting active using Memory storage"
+                (client or redis.from_url(uri)).ping()
+                return {"status": "healthy", "type": "Redis", "connected": True, "uri": uri}
+            except Exception:
+                return {"status": "degraded", "type": "Unavailable" if client else "Memory", "connected": False, "uri": uri}
         
-        health_status["checks"]["rate_limiting"] = {
-            "status": "healthy",
-            "message": message,
-            "storage_type": storage_type,
-            "storage_uri": redis_url
-        }
+        # Check Rate Limiting & Token Blocklist
+        for check_name, uri, client, messages in [
+            ("rate_limiting", redis_url, None, ("Rate limiting active using Redis storage", "Rate limiting active using Memory storage")),
+            ("token_blocklist", blocklist_redis_url, blocklist_redis, ("Token blocklist active using Redis storage", "Token blocklist using fallback (Redis not configured)"))
+        ]:
+            check = check_redis(uri, client)
+            health_status["checks"][check_name] = {
+                "status": check["status"],
+                "message": messages[0] if check["connected"] else messages[1],
+                "storage_type": check["type"],
+                "storage_uri": check["uri"]
+            }
 
         # Check JWT configuration
         try:

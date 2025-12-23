@@ -23,7 +23,7 @@ AccessVault is a **production-ready REST API** that provides secure user managem
 AccessVault/
 ├── 📁 src/                   # Core application package
 │   ├── 📄 __init__.py        # Package initialization & global error handlers
-│   ├── 📄 models.py          # Database models (User, RevokedToken, PasswordResetToken)
+│   ├── 📄 models.py          # Database models (User, PasswordResetToken)
 │   ├── 📄 extensions.py      # Flask extensions (db, jwt, bcrypt, limiter, cors, api)
 │   ├── 📄 decorators.py      # Access control decorators
 │   ├── 📄 config.py          # Configuration management
@@ -36,8 +36,7 @@ AccessVault/
 │       └── 📄 admin.py       # Admin operations
 ├── 📁 scripts/               # Utility scripts
 │   ├── 📄 init_db.py         # Database initialization
-│   ├── 📄 create_admin.py    # Admin user creation
-│   └── 📄 cleanup_tokens.py  # Token cleanup
+│   └── 📄 create_admin.py    # Admin user creation
 ├── 📁 logs/                  # Application logs (auto-generated)
 │   └── 📄 accessvault.log    # Current log file with daily rotation
 ├── 📄 app.py                 # Main application entry point
@@ -139,7 +138,6 @@ flask db upgrade
 
 This creates the following tables:
 - `users` - User accounts and authentication data
-- `revoked_tokens` - Revoked JWT tokens for security
 - `password_reset_tokens` - Admin-generated password reset tokens
 
 ### **Step 6: Create Admin User (Optional)**
@@ -162,16 +160,6 @@ python app.py
 - **Health Check:** `http://127.0.0.1:5000/api/health/`
 - **Swagger UI:** `http://127.0.0.1:5000/api/swagger-ui/`
 
-### **Step 8: Token Cleanup (Optional)**
-For production environments, you can set up automated token cleanup:
-```bash
-python -m scripts.cleanup_tokens
-```
-
-**What it does:**
-- Removes expired JWT tokens (older than 7 days)
-- Removes expired password reset tokens
-- Improves database performance
 - Can be run as a scheduled task (cron job)
 
 ---

@@ -495,27 +495,6 @@ Generate a password reset token for a user.
 
 **Note:** Token expires in 24 hours. User can use it at `/api/auth/reset-password`.
 
----
-
-### Cleanup Expired Tokens
-
-**DELETE** `/api/admin/cleanup-expired-tokens`  
-**Auth Required:** Yes (Admin)
-
-Remove expired tokens from database.
-
-**Response:** `200 OK`
-```json
-{
-  "status": "success",
-  "message": "Cleanup completed successfully. Removed 150 expired tokens",
-  "data": {
-    "total_cleaned": 150,
-    "jwt_tokens_removed": 120,
-    "reset_tokens_removed": 30
-  }
-}
-```
 
 ---
 

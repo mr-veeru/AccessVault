@@ -18,6 +18,17 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv("SQLALCHEMY_DATABASE_URI")    # Database connection configuration
     SQLALCHEMY_TRACK_MODIFICATIONS = False    # Disable SQLAlchemy event system
     
+    # SQLAlchemy Connection Pool Configuration
+    # These settings optimize database connection management for production
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_size": 10,              # Number of connections to maintain in the pool
+        "max_overflow": 20,           # Maximum number of connections beyond pool_size
+        "pool_recycle": 3600,         # Recycle connections after 1 hour (3600 seconds)
+        "pool_pre_ping": True,        # Verify connections before using them (auto-reconnect)
+        "pool_timeout": 30,           # Timeout when getting connection from pool (seconds)
+        "echo": False                 # Set to True for SQL query logging (development only)
+    }
+    
     # Flask environment configuration
     ENV = os.getenv("FLASK_ENV", "development")  # Environment: development, production, testing
     DEBUG = os.getenv("FLASK_DEBUG", "false").lower() in ("true", "1", "yes")  # Debug mode (default: False)

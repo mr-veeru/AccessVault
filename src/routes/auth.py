@@ -8,9 +8,9 @@ Uses Flask-RESTX for automatic Swagger documentation.
 
 from flask import request, g
 from flask_restx import Namespace, Resource, fields
-from src.extensions import db, bcrypt, api, limiter
+from src.extensions import db, bcrypt, api, limiter, blocklist_redis
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
-from src.models import User, RevokedToken, PasswordResetToken
+from src.models import User, PasswordResetToken
 from src.logger import logger
 import re
 from src.decorators import active_required
@@ -58,23 +58,53 @@ def is_token_revoked(jwt_header, jwt_payload):
     """
     Callback function to check if a JWT token has been revoked.
     This function is called by Flask-JWT-Extended for every protected endpoint.
-    Uses database-backed token management for production security.
+    Uses Redis for fast token blocklisting.
     """
     jti = jwt_payload.get('jti')
-    return RevokedToken.query.filter_by(jti=jti).first() is not None
+    if not jti:
+        return False
+    
+    # Check Redis for revoked token
+    if blocklist_redis:
+        try:
+            return blocklist_redis.exists(f"revoked_token:{jti}") == 1
+        except Exception:
+            # If Redis fails, allow token (fail open for availability)
+            logger.warning("Redis blocklist check failed, allowing token")
+            return False
+    
+    # Fallback: if Redis not available, token is not revoked
+    return False
 
-def revoke_token(jti, user_id):
+def revoke_token(jti, user_id, expires_in_seconds=None):
     """
-    Revoke a JWT token by adding it to the revoked tokens table.
+    Revoke a JWT token by adding it to Redis blocklist.
+    
+    Args:
+        jti: JWT ID (unique token identifier)
+        user_id: User ID who owns the token
+        expires_in_seconds: TTL for the token in Redis (default: 7 days for refresh, 1 hour for access)
     """
-    # Check if token is already revoked
-    if RevokedToken.query.filter_by(jti=jti).first():
+    if not jti:
         return
     
-    # Add to revoked tokens table
-    revoked_token = RevokedToken(jti=jti, user_id=user_id)
-    db.session.add(revoked_token)
-    db.session.commit()
+    # Default TTL: 7 days (604800 seconds) - covers refresh token lifetime
+    if expires_in_seconds is None:
+        expires_in_seconds = 7 * 24 * 60 * 60  # 7 days
+    
+    if blocklist_redis:
+        try:
+            # Store revoked token in Redis with TTL (auto-expires)
+            blocklist_redis.setex(
+                f"revoked_token:{jti}",
+                expires_in_seconds,
+                str(user_id)
+            )
+            logger.info(f"Token revoked in Redis: {jti} (expires in {expires_in_seconds}s)")
+        except Exception as e:
+            logger.error(f"Failed to revoke token in Redis: {str(e)}")
+    else:
+        logger.warning("Redis not available for token revocation")
 
 @auth_ns.route('/register')
 class Register(Resource):
@@ -304,8 +334,9 @@ class Logout(Resource):
             return {"error": "User not found"}, 404
 
         # Revoke the current access token
+        # Access token TTL: 1 hour (3600 seconds)
         jti = get_jwt()['jti']  # JWT ID
-        revoke_token(jti, user.id)
+        revoke_token(jti, user.id, expires_in_seconds=3600)
         logger.info(f"User logged out successfully: {user.username} (ID: {user.id}) from IP: {request.remote_addr}")
         return {"message": "Logged out successfully"}, 200
 
@@ -341,7 +372,8 @@ class Refresh(Resource):
         current_jti = get_jwt()['jti']
         
         # Revoke the current refresh token (token rotation)
-        revoke_token(current_jti, user.id)
+        # Refresh token TTL: 7 days (604800 seconds)
+        revoke_token(current_jti, user.id, expires_in_seconds=604800)
         
         # Create new tokens
         access_token = create_access_token(

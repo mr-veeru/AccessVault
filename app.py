@@ -9,7 +9,7 @@ Version: 1.0.0
 
 from flask import Flask, jsonify
 from src.config import Config
-from src.extensions import db, jwt, bcrypt, limiter, cors, migrate
+from src.extensions import db, jwt, bcrypt, limiter, cors, migrate, init_redis_blocklist
 from src.routes import health_ns, auth_ns, profile_ns, admin_ns
 from src import register_error_handlers
 from src.logger import logger
@@ -31,6 +31,9 @@ def create_app():
     jwt.init_app(app)
     bcrypt.init_app(app)
     limiter.init_app(app)
+    
+    # Initialize Redis for token blocklisting
+    init_redis_blocklist()
     
     # Configure CORS
     cors.init_app(app, resources={

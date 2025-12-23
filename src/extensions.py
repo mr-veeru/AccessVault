@@ -15,6 +15,7 @@ from flask_limiter.util import get_remote_address
 from flask_cors import CORS
 from flask_migrate import Migrate
 import os
+import redis
 
 # Initialize Flask extensions
 # These will be initialized with the app in the create_app() function
@@ -42,3 +43,20 @@ limiter = Limiter(
     default_limits=["100 per day", "20 per hour", "5 per minute"],  # fallback limits
     swallow_errors=True            # Don't fail if Redis is unavailable
 )
+
+# Redis client for token blocklisting
+# Uses same Redis URL as rate limiting, or separate if BLOCKLIST_REDIS_URL is set
+blocklist_redis_url = os.getenv("BLOCKLIST_REDIS_URL", redis_url)
+blocklist_redis = None
+
+def init_redis_blocklist():
+    """Initialize Redis client for token blocklisting."""
+    global blocklist_redis
+    if blocklist_redis_url.startswith("redis://"):
+        try:
+            blocklist_redis = redis.from_url(blocklist_redis_url, decode_responses=True)
+            blocklist_redis.ping()  # Test connection
+        except Exception:
+            blocklist_redis = None  # Fallback to None if Redis unavailable
+    else:
+        blocklist_redis = None  # Use in-memory fallback

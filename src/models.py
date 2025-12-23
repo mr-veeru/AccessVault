@@ -2,7 +2,7 @@
 Database Models Module
 
 This module defines the SQLAlchemy models for the AccessVault application.
-Currently contains the User model which represents user accounts in the system.
+Contains User and PasswordResetToken models.
 """
 
 from src.extensions import db 
@@ -45,39 +45,6 @@ class User(db.Model):
     def __repr__(self):
         """String representation of the User object for debugging."""
         return f"<User {self.username}>"
-
-
-class RevokedToken(db.Model):
-    """
-    RevokedToken model representing revoked JWT tokens in the AccessVault system.
-    
-    This model stores information about JWT tokens that have been revoked for security
-    purposes. When a user logs out or refreshes their tokens, the old tokens are
-    added to this table to prevent their reuse.
-    
-    Attributes:
-        jti (str): Primary key, JWT ID (unique identifier for the token)
-        user_id (int): Foreign key referencing the user who owned the token
-        revoked_at (datetime): Timestamp when the token was revoked
-    """
-    __tablename__ = "revoked_tokens"
-    
-    # Primary key - JWT ID (unique identifier)
-    jti = db.Column(db.String(36), primary_key=True)
-    
-    # Token metadata
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    revoked_at = db.Column(db.DateTime, nullable=False, default=db.func.current_timestamp())
-    
-    # Database indexes for performance
-    __table_args__ = (
-        db.Index('idx_revoked_tokens_user_id', 'user_id'),
-        db.Index('idx_revoked_tokens_revoked_at', 'revoked_at'),
-    )
-    
-    def __repr__(self):
-        """String representation of the RevokedToken object for debugging."""
-        return f"<RevokedToken {self.jti}>"
 
 
 class PasswordResetToken(db.Model):

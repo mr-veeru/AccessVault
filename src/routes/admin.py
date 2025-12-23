@@ -11,7 +11,7 @@ from flask_restx import Namespace, Resource, fields
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from src.decorators import role_required
 from src.extensions import db, bcrypt, api, limiter
-from src.models import User, PasswordResetToken, RevokedToken
+from src.models import User, PasswordResetToken
 from src.logger import logger
 from src.routes.auth import USERNAME_REGEX
 import re
@@ -665,54 +665,3 @@ class GenerateResetToken(Resource):
             "data": token_data
         }, 200
 
-
-@admin_ns.route('/cleanup-expired-tokens')
-class CleanupExpiredTokens(Resource):
-    @limiter.limit("5 per hour")
-    @admin_ns.marshal_with(success_response_model, code=200)
-    @jwt_required()
-    @role_required('admin')
-    def delete(self):
-        """
-        Clean up expired tokens from the database (Admin only).
-        
-        This endpoint removes all expired JWT tokens and password reset tokens
-        from the database to improve performance and reduce storage usage.
-        """
-        current_time = datetime.utcnow()
-        
-        # Clean up expired JWT tokens
-        expired_jwt_tokens = RevokedToken.query.filter(
-            RevokedToken.revoked_at < current_time - timedelta(days=7)
-        ).all()
-        
-        jwt_count = len(expired_jwt_tokens)
-        for token in expired_jwt_tokens:
-            db.session.delete(token)
-        
-        # Clean up expired password reset tokens
-        expired_reset_tokens = PasswordResetToken.query.filter(
-            PasswordResetToken.expires_at < current_time
-        ).all()
-        
-        reset_count = len(expired_reset_tokens)
-        for token in expired_reset_tokens:
-            db.session.delete(token)
-        
-        db.session.commit()
-        
-        total_cleaned = jwt_count + reset_count
-        
-        logger.info(f"Token cleanup completed by admin: {jwt_count} expired JWT tokens, {reset_count} expired reset tokens removed from IP: {request.remote_addr}")
-        
-        cleanup_data = {
-            "total_cleaned": total_cleaned,
-            "jwt_tokens_removed": jwt_count,
-            "reset_tokens_removed": reset_count
-        }
-        
-        return {
-            "status": "success",
-            "message": f"Cleanup completed successfully. Removed {total_cleaned} expired tokens",
-            "data": cleanup_data
-        }, 200
