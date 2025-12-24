@@ -7,7 +7,7 @@ Author: Veerendra
 Version: 1.0.0
 """
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, g, request
 from src.config import Config
 from src.extensions import db, jwt, bcrypt, limiter, cors, migrate, init_redis_blocklist
 from src.routes import health_ns, auth_ns, profile_ns, admin_ns
@@ -15,6 +15,7 @@ from src import register_error_handlers
 from src.logger import logger
 from src.extensions import api
 from src.routes.auth import is_token_revoked
+import uuid
 
 
 # Create the Flask app
@@ -40,8 +41,8 @@ def create_app():
         r"/api/*": {
             "origins": Config.CORS_ORIGINS,
             "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"],
-            "expose_headers": ["Content-Type"],
+            "allow_headers": ["Content-Type", "Authorization", "X-Request-ID"],
+            "expose_headers": ["Content-Type", "X-Request-ID"],
             "supports_credentials": True
         }
     })
@@ -57,6 +58,23 @@ def create_app():
 
     # Register error handlers
     register_error_handlers(app)
+    
+    # Request ID tracking middleware
+    @app.before_request
+    def add_request_id():
+        """Generate and attach request ID to all requests."""
+        # Check if request ID is provided in headers (for distributed tracing)
+        request_id = request.headers.get('X-Request-ID')
+        if not request_id:
+            request_id = str(uuid.uuid4())
+        g.request_id = request_id
+    
+    @app.after_request
+    def add_request_id_header(response):
+        """Add request ID to response headers."""
+        if hasattr(g, 'request_id'):
+            response.headers['X-Request-ID'] = g.request_id
+        return response
 
     # Simple home endpoint (register last to override Flask-RESTX root)
     @app.route('/')

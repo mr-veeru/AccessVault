@@ -8,7 +8,7 @@ Uses Flask-RESTX for automatic Swagger documentation.
 
 from flask import request, g
 from flask_restx import Namespace, Resource, fields
-from src.extensions import db, bcrypt, api, limiter, blocklist_redis
+from src.extensions import db, bcrypt, api, limiter, blocklist_redis, blocklist_redis_required
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
 from src.models import User, PasswordResetToken
 from src.logger import logger
@@ -23,7 +23,7 @@ auth_ns = Namespace('auth', description='Authentication operations')
 register_model = api.model('Register', {
     'name': fields.String(required=True, description='Full name', example='Veerendra'),
     'username': fields.String(required=True, description='Username (3+ chars, letters+numbers)', example='veeru68'),
-    'password': fields.String(required=True, description='Password (6+ chars, uppercase+number+special)', example='Password123!'),
+    'password': fields.String(required=True, description='Password (8+ chars, uppercase+number+special)', example='Password123!'),
     'confirm_password': fields.String(required=True, description='Confirm password', example='Password123!')
 })
 
@@ -56,55 +56,39 @@ USERNAME_REGEX = r"^(?=.*[a-zA-Z])(?=.*\d)[a-zA-Z0-9]{3,}$" # Requires: at least
 
 def is_token_revoked(jwt_header, jwt_payload):
     """
-    Callback function to check if a JWT token has been revoked.
-    This function is called by Flask-JWT-Extended for every protected endpoint.
-    Uses Redis for fast token blocklisting.
+    Check if JWT token is revoked using Redis blocklist.
+    Fail-closed: Rejects all tokens if Redis is configured but unavailable.
     """
     jti = jwt_payload.get('jti')
     if not jti:
         return False
     
+    # Fail-closed: Reject all tokens if Redis required but unavailable
+    if blocklist_redis_required and not blocklist_redis:
+        logger.error("Redis blocklist unavailable - Rejecting token for security")
+        return True
+    
     # Check Redis for revoked token
     if blocklist_redis:
         try:
             return blocklist_redis.exists(f"revoked_token:{jti}") == 1
-        except Exception:
-            # If Redis fails, allow token (fail open for availability)
-            logger.warning("Redis blocklist check failed, allowing token")
-            return False
+        except Exception as e:
+            logger.error(f"Redis blocklist check failed: {str(e)} - Rejecting token")
+            return True  # Fail-closed
     
-    # Fallback: if Redis not available, token is not revoked
-    return False
+    return False  # Redis not configured (development mode)
 
 def revoke_token(jti, user_id, expires_in_seconds=None):
-    """
-    Revoke a JWT token by adding it to Redis blocklist.
-    
-    Args:
-        jti: JWT ID (unique token identifier)
-        user_id: User ID who owns the token
-        expires_in_seconds: TTL for the token in Redis (default: 7 days for refresh, 1 hour for access)
-    """
-    if not jti:
+    """Revoke JWT token by adding to Redis blocklist with TTL."""
+    if not jti or not blocklist_redis:
         return
     
-    # Default TTL: 7 days (604800 seconds) - covers refresh token lifetime
-    if expires_in_seconds is None:
-        expires_in_seconds = 7 * 24 * 60 * 60  # 7 days
-    
-    if blocklist_redis:
-        try:
-            # Store revoked token in Redis with TTL (auto-expires)
-            blocklist_redis.setex(
-                f"revoked_token:{jti}",
-                expires_in_seconds,
-                str(user_id)
-            )
-            logger.info(f"Token revoked in Redis: {jti} (expires in {expires_in_seconds}s)")
-        except Exception as e:
-            logger.error(f"Failed to revoke token in Redis: {str(e)}")
-    else:
-        logger.warning("Redis not available for token revocation")
+    expires_in_seconds = expires_in_seconds or (7 * 24 * 60 * 60)  # Default: 7 days
+    try:
+        blocklist_redis.setex(f"revoked_token:{jti}", expires_in_seconds, str(user_id))
+        logger.info(f"Token revoked: {jti} (expires in {expires_in_seconds}s)")
+    except Exception as e:
+        logger.error(f"Failed to revoke token: {str(e)}")
 
 @auth_ns.route('/register')
 class Register(Resource):

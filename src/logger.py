@@ -3,6 +3,7 @@ from logging.handlers import TimedRotatingFileHandler
 from pythonjsonlogger import jsonlogger
 import os
 import sys
+from flask import has_request_context, g
 
 # Create logs directory if not exists
 if not os.path.exists("logs"):
@@ -69,9 +70,17 @@ file_handler = WindowsSafeTimedRotatingFileHandler(
 # Log file name will include date automatically by handler using suffix
 file_handler.suffix = "%Y-%m-%d.log"
 
+# Custom JSON formatter that includes request ID
+class RequestIDJsonFormatter(jsonlogger.JsonFormatter):
+    """JSON formatter that includes request ID from Flask's g object."""
+    def format(self, record):
+        if has_request_context() and hasattr(g, 'request_id'):
+            record.request_id = g.request_id
+        return super().format(record)
+
 # JSON formatter for structured logging
-# Format includes: timestamp, level, logger name, message, and any extra fields
-json_formatter = jsonlogger.JsonFormatter(
+# Format includes: timestamp, level, logger name, message, request_id, and any extra fields
+json_formatter = RequestIDJsonFormatter(
     '%(asctime)s %(name)s %(levelname)s %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     json_ensure_ascii=False
@@ -82,7 +91,14 @@ file_handler.setFormatter(json_formatter)
 logger.addHandler(file_handler)
 
 # Console handler with human-readable format (for development)
+class RequestIDConsoleFormatter(logging.Formatter):
+    """Console formatter that includes request ID."""
+    def format(self, record):
+        if has_request_context() and hasattr(g, 'request_id'):
+            record.msg = f"[{g.request_id}] {record.msg}"
+        return super().format(record)
+
 console_handler = logging.StreamHandler()
-console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+console_formatter = RequestIDConsoleFormatter("%(asctime)s - %(levelname)s - %(message)s")
 console_handler.setFormatter(console_formatter)
 logger.addHandler(console_handler)

@@ -6,7 +6,7 @@ AccessVault is a **production-ready REST API** that provides secure user managem
 
 - **JWT Authentication** - Secure token-based authentication
 - **Role-Based Access Control** - User and Admin roles
-- **Rate Limiting** - Redis-backed protection against abuse
+- **Rate Limiting & Blocklisting** - Redis-backed protection against abuse and revoked tokens
 - **CORS Support** - Cross-origin resource sharing for frontend integration
 - **Token Management** - Automatic token rotation and revocation
 - **Password Security** - Bcrypt hashing with strength validation
@@ -159,8 +159,6 @@ python app.py
 - **API Base URL:** `http://127.0.0.1:5000/`
 - **Health Check:** `http://127.0.0.1:5000/api/health/`
 - **Swagger UI:** `http://127.0.0.1:5000/api/swagger-ui/`
-
-- Can be run as a scheduled task (cron job)
 
 ---
 

@@ -48,15 +48,22 @@ limiter = Limiter(
 # Uses same Redis URL as rate limiting, or separate if BLOCKLIST_REDIS_URL is set
 blocklist_redis_url = os.getenv("BLOCKLIST_REDIS_URL", redis_url)
 blocklist_redis = None
+blocklist_redis_required = False  # Track if Redis is required (configured but unavailable)
 
 def init_redis_blocklist():
-    """Initialize Redis client for token blocklisting."""
-    global blocklist_redis
+    """Initialize Redis client for token blocklisting. Fail-closed if configured but unavailable."""
+    global blocklist_redis, blocklist_redis_required
     if blocklist_redis_url.startswith("redis://"):
         try:
             blocklist_redis = redis.from_url(blocklist_redis_url, decode_responses=True)
-            blocklist_redis.ping()  # Test connection
-        except Exception:
-            blocklist_redis = None  # Fallback to None if Redis unavailable
+            blocklist_redis.ping()
+            blocklist_redis_required = True
+        except Exception as e:
+            blocklist_redis = None
+            blocklist_redis_required = True
+            import sys
+            print(f"WARNING: Redis blocklist unavailable: {str(e)} - All tokens will be rejected", file=sys.stderr)
     else:
-        blocklist_redis = None  # Use in-memory fallback
+        blocklist_redis = None
+        blocklist_redis_required = False
+        
