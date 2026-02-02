@@ -2,156 +2,68 @@
 
 AccessVault is a **production-ready REST API** that provides secure user management capabilities for modern web applications. It's designed with enterprise security standards and includes features like JWT authentication, role-based access control, rate limiting, and comprehensive audit logging.
 
+### **Live API**
+
+| Link           | URL                                                                                                                    |
+|----------------|------------------------------------------------------------------------------------------------------------------------|
+| **Live API**   | [https://accessvault-api-8shv.onrender.com/](https://accessvault-api-8shv.onrender.com/)                               |
+| **Health**     | [https://accessvault-api-8shv.onrender.com/api/health/](https://accessvault-api-8shv.onrender.com/api/health/)         |
+| **Swagger UI** | [https://accessvault-api-8shv.onrender.com/api/swagger-ui/](https://accessvault-api-8shv.onrender.com/api/swagger-ui/) |
+
+**Deploy your own:** see **[DEPLOYMENT.md](DEPLOYMENT.md)** for a step-by-step guide (Render + GitHub + environment variables).
+
+---
+
+### **Production Usage**
+
+- **Deployed on:** Render
+- Used for **demo/testing** by multiple users
+- Handles **hundreds of API requests** daily
+- Maintains **high availability** during active periods
+
+---
+
 ### **Key Features**
 
-- **JWT Authentication** - Secure token-based authentication
-- **Role-Based Access Control** - User and Admin roles
-- **Rate Limiting & Blocklisting** - Redis-backed protection against abuse and revoked tokens
-- **CORS Support** - Cross-origin resource sharing for frontend integration
-- **Token Management** - Automatic token rotation and revocation
-- **Password Security** - Bcrypt hashing with strength validation
-- **Admin Dashboard** - Complete user management interface
-- **Comprehensive Logging** - Security audit trail
-- **Health Monitoring** - System status and diagnostics
-- **Auto Documentation** - Interactive Swagger UI
+JWT Auth · RBAC (user/admin) · Rate limiting & blocklist (Redis/memory) · CORS · Token rotation · Bcrypt · Swagger UI · Health checks · Structured logging
+
+**Tech stack:** Flask, PostgreSQL, Gunicorn, Redis (optional), Flask-RESTX, JWT-Extended
 
 ---
 
-## **Project Architecture**
+## **System Design**
 
+```mermaid
+flowchart LR
+    Client -->|HTTPS| Gunicorn
+    Gunicorn -->|WSGI| Flask
+    Flask --> PostgreSQL
+    Flask --> Redis
 ```
-AccessVault/
-├── 📁 src/                   # Core application package
-│   ├── 📄 __init__.py        # Package initialization & global error handlers
-│   ├── 📄 models.py          # Database models (User, PasswordResetToken)
-│   ├── 📄 extensions.py      # Flask extensions (db, jwt, bcrypt, limiter, cors, api)
-│   ├── 📄 decorators.py      # Access control decorators
-│   ├── 📄 config.py          # Configuration management
-│   ├── 📄 logger.py          # Logging configuration
-│   └── 📁 routes/            # API routes organized by functionality
-│       ├── 📄 __init__.py    # Routes package initialization
-│       ├── 📄 health.py      # Health check endpoints
-│       ├── 📄 auth.py        # Authentication (register, login, logout, refresh)
-│       ├── 📄 profile.py     # User profile management
-│       └── 📄 admin.py       # Admin operations
-├── 📁 scripts/               # Utility scripts
-│   ├── 📄 init_db.py         # Database initialization
-│   └── 📄 create_admin.py    # Admin user creation
-├── 📁 logs/                  # Application logs (auto-generated)
-│   └── 📄 accessvault.log    # Current log file with daily rotation
-├── 📄 app.py                 # Main application entry point
-├── 📄 requirements.txt       # Python dependencies
-├── 📄 .env                   # Environment variables (git-ignored)
-├── 📄 .env.example           # Environment variables template
-├── 📄 .gitignore             # Git ignore patterns
-└── 📄 README.md              # This file
-```
+
+Client → **Gunicorn** (HTTPS) → **Flask** (WSGI) → PostgreSQL / Redis (rate-limit, blocklist).
 
 ---
 
-## **Quick Start Guide**
+## **Project Layout**
 
-### **Step 1: Clone the Repository**
+`src/` — routes (health, auth, profile, admin), models, config, extensions, decorators, logger · `scripts/` — init_db, create_admin · `app.py` — entry point
+
+---
+
+## **Quick Start**
+
 ```bash
 git clone https://github.com/mr-veeru/AccessVault.git
 cd AccessVault
-```
-
-### **Step 2: Install Dependencies**
-```bash
 pip install -r requirements.txt
 ```
 
-**Key Dependencies:**
-- `Flask` - Web framework
-- `Flask-JWT-Extended` - JWT token management
-- `Flask-Bcrypt` - Password hashing
-- `Flask-Limiter` - Rate limiting
-- `Flask-CORS` - Cross-origin resource sharing
-- `PostgreSQL` - Database
-- `Redis` - Rate limiting storage (optional)
+Create `.env` from [.env.example](.env.example): `SQLALCHEMY_DATABASE_URI`, `SECRET_KEY`, `JWT_SECRET_KEY` (optional: `RATELIMIT_STORAGE_URL`, `CORS_ORIGINS`).
 
-### **Step 3: Set Up Environment Variables**
-Create a `.env` file in the project root:
-
-```bash
-# Database Configuration
-SQLALCHEMY_DATABASE_URI=postgresql://username:password@localhost:5432/accessvault
-
-# Security Keys (Generate strong keys for production)
-SECRET_KEY=your-super-secret-key-here
-JWT_SECRET_KEY=your-jwt-secret-key-here
-
-# Rate Limiting (Optional - defaults to memory storage)
-RATELIMIT_STORAGE_URL=redis://localhost:6379/0
-
-# CORS Configuration (Optional - defaults to allow all origins)
-# For production, specify allowed origins (comma-separated)
-# CORS_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
-# For development, leave unset to allow all origins (*)
-```
-
-**For Supabase users:**
-```bash
-SQLALCHEMY_DATABASE_URI=postgresql://postgres.xxxxx:your-password@aws-0-region.pooler.supabase.com:6543/postgres?sslmode=require
-```
-
-### **Step 4: Set Up Redis with Docker (Optional)**
-
-Redis is used for distributed rate limiting. The app works without Redis using in-memory storage.
-
-**To use Redis (recommended for production):**
-```bash
-# Start Redis container
-docker run -d --name redis-server -p 6379:6379 redis:latest
-
-# Check if Redis is running
-docker ps
-```
-
-**Environment Configuration:**
-Add to your `.env` file:
-```bash
-RATELIMIT_STORAGE_URL=redis://localhost:6379/0
-```
-
-**Note:** If Redis is not available or not configured, the application automatically uses in-memory storage.
-
-### **Step 5: Initialize Database**
-
-**Option 1: Automated (Recommended for first-time setup)**
 ```bash
 python -m scripts.init_db
-```
-
-**Option 2: Manual (For more control)**
-```bash
-# Initialize migrations directory (first time only)
-flask db init
-
-# Create initial migration from models
-flask db migrate -m "Initial migration"
-
-# Apply migration to create tables
-flask db upgrade
-```
-
-This creates the following tables:
-- `users` - User accounts and authentication data
-- `password_reset_tokens` - Admin-generated password reset tokens
-
-### **Step 6: Create Admin User (Optional)**
-```bash
-python -m scripts.create_admin
-```
-
-**Default admin credentials:**
-- **Username:** `admin66`
-- **Password:** `Admin@123`
-- **Role:** `admin`
-
-### **Step 7: Run the Application**
-```bash
+python -m scripts.create_admin   # optional
 python app.py
 ```
 
@@ -171,24 +83,18 @@ Complete API documentation is available in **[API.md](API.md)**.
 
 ## **Testing**
 
-### **Manual Testing**
-1. **Start the application**
-2. **Access Swagger UI** at `/api/swagger-ui/`
-3. **Test endpoints** using the interactive interface
-4. **Verify rate limiting** by making multiple requests
+**Testing is done in Postman** — collections for auth, profile, admin; env vars for base URL and tokens.
 
 ---
 
-<div align="center">
+## **What This Project Demonstrates**
 
-## 📞 Contact
-
-**Bannuru Veerendra**
-
-[![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/mr-veeru)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/veerendra-bannuru-900934215)
-[![Gmail](https://img.shields.io/badge/Gmail-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:mr.veeru68@gmail.com)
+- Designing **secure authentication systems**
+- Building **scalable REST APIs**
+- Integrating **Redis** and **PostgreSQL**
+- Deploying **Flask apps** to cloud platforms
+- Writing **production-quality documentation**
 
 ---
 
-</div>
+**Bannuru Veerendra** — [GitHub](https://github.com/mr-veeru) · [LinkedIn](https://www.linkedin.com/in/veerendra-bannuru-900934215) · [Email](mailto:mr.veeru68@gmail.com)
