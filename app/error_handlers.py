@@ -1,12 +1,12 @@
 """
-AccessVault Application Package
+AccessVault Error Handlers
 
 This package contains error handling and global configurations
 for the Flask application.
 """
 
 from flask import jsonify
-from src.logger import logger
+from .logger import logger
 from sqlalchemy.exc import SQLAlchemyError
 
 
@@ -17,8 +17,7 @@ def register_error_handlers(app):
     Args:
         app: Flask application instance
     """
-    # ---------- Global error handlers (consistent JSON responses) ----------
-
+    
     @app.errorhandler(400)
     def handle_400(_):
         """Handle 400 Bad Request errors with consistent JSON response."""
@@ -41,11 +40,11 @@ def register_error_handlers(app):
 
     @app.errorhandler(SQLAlchemyError)
     def handle_sqlalchemy_error(err: SQLAlchemyError):
-        """Handle database-related errors with rollback and error response."""
+        """Handle database-related errors with rollback and error response. Details logged only."""
         logger.error(f"Database error occurred: {str(err)}")
-        from src.extensions import db
+        from .extensions import db
         db.session.rollback()
-        return jsonify({"error": f"Database error: {str(err)}"}), 500
+        return jsonify({"error": "Database error. Please try again later."}), 500
 
     @app.errorhandler(429)
     def handle_rate_limit_exceeded(err):

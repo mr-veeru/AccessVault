@@ -4,19 +4,19 @@ from pythonjsonlogger import jsonlogger
 import os
 import sys
 from flask import has_request_context, g
+from .config import Config
 
 # Create logs directory if not exists
 if not os.path.exists("logs"):
     os.makedirs("logs")
 
-# Logger name
+# Initialize logger with name
 logger = logging.getLogger("accessvault")
 
 # Get log level from config (defaults to INFO if not set)
 # Import here to avoid circular imports
 def get_log_level():
     """Get log level from environment or config, defaulting to INFO."""
-    from src.config import Config
     log_level_str = Config.LOG_LEVEL
     
     # Convert string to logging level constant

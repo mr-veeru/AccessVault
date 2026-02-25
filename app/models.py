@@ -5,7 +5,7 @@ This module defines the SQLAlchemy models for the AccessVault application.
 Contains User and PasswordResetToken models.
 """
 
-from src.extensions import db 
+from .extensions import db 
 
 
 class User(db.Model):

@@ -15,7 +15,7 @@ Usage:
 """
 
 from app import create_app
-from src.extensions import db
+from app.extensions import db
 from flask_migrate import init, migrate, upgrade
 import sys
 import os

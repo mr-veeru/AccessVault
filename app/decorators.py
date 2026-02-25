@@ -8,7 +8,7 @@ and user status validation.
 from functools import wraps
 from flask import jsonify, g
 from flask_jwt_extended import get_jwt_identity, jwt_required, get_jwt
-from src.models import User
+from .models import User
 
 def active_required(fn):
     """

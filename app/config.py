@@ -48,3 +48,10 @@ class Config:
     # Logging Configuration
     # Log level: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()  # Default: INFO
+
+    # Redis URLs (read once here; do not read env in routes)
+    RATELIMIT_STORAGE_URL = os.getenv("RATELIMIT_STORAGE_URL", "memory://")
+    BLOCKLIST_REDIS_URL = os.getenv(
+        "BLOCKLIST_REDIS_URL",
+        os.getenv("RATELIMIT_STORAGE_URL", "memory://"),
+    )

@@ -41,13 +41,17 @@ flowchart LR
     Flask --> Redis
 ```
 
-Client → **Gunicorn** (HTTPS) → **Flask** (WSGI) → PostgreSQL / Redis (rate-limit, blocklist).
-
 ---
 
 ## **Project Layout**
 
-`src/` — routes (health, auth, profile, admin), models, config, extensions, decorators, logger · `scripts/` — init_db, create_admin · `app.py` — entry point
+- **`app/`**
+  - routes: health, auth, profile, admin
+  - models, config, extensions, decorators, logger
+- **`scripts/`**
+  - init_db
+  - create_admin
+- **`run.py`** — local entry point (production: `gunicorn app:app`)
 
 ---
 
@@ -64,7 +68,7 @@ Create `.env` from [.env.example](.env.example): `SQLALCHEMY_DATABASE_URI`, `SEC
 ```bash
 python -m scripts.init_db
 python -m scripts.create_admin   # optional
-python app.py
+python run.py
 ```
 
 **Access Points:**
@@ -97,4 +101,4 @@ Complete API documentation is available in **[API.md](API.md)**.
 
 ---
 
-**Bannuru Veerendra** — [GitHub](https://github.com/mr-veeru) · [LinkedIn](https://www.linkedin.com/in/veerendra-bannuru-900934215) · [Email](mailto:mr.veeru68@gmail.com)
+**Bannuru Veerendra** — [GitHub](https://github.com/bannuru-veerendra) · [LinkedIn](https://www.linkedin.com/in/veerendra-bannuru-900934215) · [Email](mailto:bannuru.veerendra@gmail.com)

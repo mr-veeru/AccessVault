@@ -13,10 +13,10 @@ Default admin credentials:
 - Status: active
 """
 
-from src.extensions import bcrypt, db
-from src.models import User
+from app.extensions import bcrypt, db
+from app.models import User
 from app import create_app
-from src.logger import logger
+from app.logger import logger
 
 # Create Flask app instance
 app = create_app()

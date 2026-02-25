@@ -8,12 +8,13 @@ Uses Flask-RESTX for automatic Swagger documentation.
 
 from flask import request, g
 from flask_restx import Namespace, Resource, fields
-from src.extensions import db, bcrypt, api, limiter, blocklist_redis, blocklist_redis_required
+from ..extensions import db, bcrypt, api, limiter
+from ..redis_blocklist import blocklist_redis, blocklist_redis_required
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
-from src.models import User, PasswordResetToken
-from src.logger import logger
+from ..models import User, PasswordResetToken
+from ..logger import logger
 import re
-from src.decorators import active_required
+from ..decorators import active_required
 from datetime import datetime
 
 # Create authentication namespace

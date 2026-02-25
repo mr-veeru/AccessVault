@@ -9,11 +9,11 @@ Uses Flask-RESTX for automatic Swagger documentation.
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from src.decorators import role_required
-from src.extensions import db, bcrypt, api, limiter
-from src.models import User, PasswordResetToken
-from src.logger import logger
-from src.routes.auth import USERNAME_REGEX
+from ..decorators import role_required
+from ..extensions import db, bcrypt, api, limiter
+from ..models import User, PasswordResetToken
+from ..logger import logger
+from .auth import USERNAME_REGEX
 import re
 import secrets
 from datetime import datetime, timedelta
