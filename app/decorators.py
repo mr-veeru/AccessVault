@@ -6,7 +6,7 @@ and user status validation.
 """
 
 from functools import wraps
-from flask import jsonify, g
+from flask import g
 from flask_jwt_extended import get_jwt_identity, jwt_required, get_jwt
 from .models import User
 
@@ -67,12 +67,12 @@ def role_required(required_role):
             
             # Check if role information is present in the JWT claims
             if not claims or "role" not in claims:
-                return jsonify({"error": "Role information missing"}), 403
+                return {"error": "Role information missing"}, 403
             
             # Check if user has the required role
             user_role = claims["role"]
             if user_role != required_role:
-                return jsonify({"error": f"Forbidden. {required_role.title()} role required!"}), 403
+                return {"error": f"Forbidden. {required_role.title()} role required!"}, 403
             
             # User has required role, proceed with the original function
             return fn(*args, **kwargs)

@@ -1,69 +1,62 @@
-# AccessVault - Enterprise User Management API
+# AccessVault
 
-AccessVault is a **production-ready REST API** that provides secure user management capabilities for modern web applications. It's designed with enterprise security standards and includes features like JWT authentication, role-based access control, rate limiting, and comprehensive audit logging.
+REST API for user management with JWT authentication and role-based access control (user/admin). Built with Flask, PostgreSQL, and optional Redis.
 
-### **Live API**
+### Demo
 
-| Link           | URL                                                                                                                    |
-|----------------|------------------------------------------------------------------------------------------------------------------------|
-| **Live API**   | [https://accessvault-api-8shv.onrender.com/](https://accessvault-api-8shv.onrender.com/)                               |
-| **Health**     | [https://accessvault-api-8shv.onrender.com/api/health/](https://accessvault-api-8shv.onrender.com/api/health/)         |
-| **Swagger UI** | [https://accessvault-api-8shv.onrender.com/api/swagger-ui/](https://accessvault-api-8shv.onrender.com/api/swagger-ui/) |
+| Link | URL |
+|------|-----|
+| API | [https://accessvault-api-8shv.onrender.com/](https://accessvault-api-8shv.onrender.com/) |
+| Health | [https://accessvault-api-8shv.onrender.com/api/health/](https://accessvault-api-8shv.onrender.com/api/health/) |
+| Swagger UI | [https://accessvault-api-8shv.onrender.com/api/swagger-ui/](https://accessvault-api-8shv.onrender.com/api/swagger-ui/) |
 
-**Deploy your own:** see **[DEPLOYMENT.md](DEPLOYMENT.md)** for a step-by-step guide (Render + GitHub + environment variables).
-
----
-
-### **Production Usage**
-
-- **Deployed on:** Render
-- Used for **demo/testing** by multiple users
-- Handles **hundreds of API requests** daily
-- Maintains **high availability** during active periods
+Hosted on Render’s free tier (cold starts after idle). To deploy your own copy, see [DEPLOYMENT.md](DEPLOYMENT.md). Security and improvement plan: [ROADMAP.md](ROADMAP.md).
 
 ---
 
-### **Key Features**
+### Features
 
-JWT Auth · RBAC (user/admin) · Rate limiting & blocklist (Redis/memory) · CORS · Token rotation · Bcrypt · Swagger UI · Health checks · Structured logging
+- JWT access/refresh tokens with Redis-backed logout/token revocation in production (in-memory blocklist for local development)
+- Roles: `user` and `admin`
+- Rate limiting, CORS, bcrypt password hashing
+- Health checks and Swagger UI (Flask-RESTX)
+- Structured request logging
 
-**Tech stack:** Flask, PostgreSQL, Gunicorn, Redis (optional), Flask-RESTX, JWT-Extended
+**Stack:** Flask · PostgreSQL · Gunicorn · Redis · Flask-JWT-Extended · Flask-RESTX  
+
+Redis is required for production rate limiting and token revocation; local development can use in-memory fallbacks.
 
 ---
 
-## **System Design**
+## Architecture
 
 ```mermaid
 flowchart LR
     Client -->|HTTPS| Gunicorn
     Gunicorn -->|WSGI| Flask
     Flask --> PostgreSQL
-    Flask --> Redis
+    Flask -.->|prod required / local optional| Redis
 ```
 
 ---
 
-## **Project Layout**
+## Project layout
 
-- **`app/`**
-  - routes: health, auth, profile, admin
-  - models, config, extensions, decorators, logger
-- **`scripts/`**
-  - init_db
-  - create_admin
+- **`app/`** — routes (health, auth, profile, admin), models, config, extensions, decorators, logger
+- **`scripts/`** — `init_db`, `create_admin`
 - **`run.py`** — local entry point (production: `gunicorn app:app`)
 
 ---
 
-## **Quick Start**
+## Quick start
 
 ```bash
-git clone https://github.com/mr-veeru/AccessVault.git
-cd AccessVault
+git clone https://github.com/bannuru-veerendra/access-vault.git
+cd access-vault
 pip install -r requirements.txt
 ```
 
-Create `.env` from [.env.example](.env.example): `SQLALCHEMY_DATABASE_URI`, `SECRET_KEY`, `JWT_SECRET_KEY` (optional: `RATELIMIT_STORAGE_URL`, `CORS_ORIGINS`).
+Copy [.env.example](.env.example) to `.env` and set at least `SQLALCHEMY_DATABASE_URI`, `SECRET_KEY`, and `JWT_SECRET_KEY`. Optionally set `RATELIMIT_STORAGE_URL`, `BLOCKLIST_REDIS_URL`, and `CORS_ORIGINS`.
 
 ```bash
 python -m scripts.init_db
@@ -71,33 +64,26 @@ python -m scripts.create_admin   # optional
 python run.py
 ```
 
-**Access Points:**
-- **API Base URL:** `http://127.0.0.1:5000/`
-- **Health Check:** `http://127.0.0.1:5000/api/health/`
-- **Swagger UI:** `http://127.0.0.1:5000/api/swagger-ui/`
+- API: `http://127.0.0.1:5000/`
+- Health: `http://127.0.0.1:5000/api/health/`
+- Swagger: `http://127.0.0.1:5000/api/swagger-ui/`
 
 ---
 
-## **API Documentation**
+## API docs
 
-Complete API documentation is available in **[API.md](API.md)**.
-**API Base URL:** `http://127.0.0.1:5000/api`
-
----
-
-## **Testing**
-
-**Testing is done in Postman** — collections for auth, profile, admin; env vars for base URL and tokens.
+Endpoint reference: [API.md](API.md). Base path: `/api`.
 
 ---
 
-## **What This Project Demonstrates**
+## Testing
 
-- Designing **secure authentication systems**
-- Building **scalable REST APIs**
-- Integrating **Redis** and **PostgreSQL**
-- Deploying **Flask apps** to cloud platforms
-- Writing **production-quality documentation**
+```bash
+pip install -r requirements.txt
+pytest
+```
+
+Uses SQLite in-memory (no Postgres/Redis needed). Postman collections remain useful for manual API exploration.
 
 ---
 
